@@ -30,8 +30,11 @@
 #include "vrf.h"
 #include "nexthop.h"
 
+#include "mpls.h"
+
 #include "zebra/zserv.h"
 #include "zebra/zebra_rnh.h"
+#include "zebra/zebra_mpls.h"
 
 static int do_show_ip_route(struct vty *vty, safi_t safi, vrf_id_t vrf_id);
 static void vty_show_ip_route_detail (struct vty *vty, struct route_node *rn,
@@ -2069,6 +2072,160 @@ DEFUN (no_ip_protocol,
     XFREE (MTYPE_ROUTE_MAP_NAME, proto_rm[AFI_IP][i]);
   proto_rm[AFI_IP][i] = NULL;
   return CMD_SUCCESS;
+}
+
+static int
+zebra_mpls_transit_lsp (struct vty *vty, int add_cmd, const char *inlabel_str,
+		        const char *gate_str, const char *outlabel_str,
+                        const char *flag_str)
+{
+  struct zebra_vrf *zvrf;
+  int ret;
+  enum nexthop_types_t gtype;
+  union g_addr gate;
+  mpls_label_t label;
+  mpls_label_t in_label, out_label;
+
+  zvrf = vrf_info_lookup(VRF_DEFAULT);
+  if (!zvrf)
+    {
+      vty_out (vty, "%% Default VRF does not exist%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  if (!inlabel_str)
+    {
+      vty_out (vty, "%% No Label Information%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  out_label = MPLS_IMP_NULL_LABEL; /* as initialization */
+  label = atoi(inlabel_str);
+  if (!IS_MPLS_UNRESERVED_LABEL(label))
+    {
+      vty_out (vty, "%% Invalid label%s", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  if (add_cmd)
+    {
+      if (!gate_str)
+        {
+          vty_out (vty, "%% No Nexthop Information%s", VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+      if (!outlabel_str)
+        {
+          vty_out (vty, "%% No Outgoing label Information%s", VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+    }
+
+  in_label = label;
+  gtype = NEXTHOP_TYPE_BLACKHOLE; /* as initialization */
+
+  if (gate_str)
+    {
+      /* Gateway is a IPv4 or IPv6 nexthop. */
+      ret = inet_pton (AF_INET6, gate_str, &gate.ipv6);
+      if (ret)
+        gtype = NEXTHOP_TYPE_IPV6;
+      else
+        {
+          ret = inet_pton (AF_INET, gate_str, &gate.ipv4);
+          if (ret)
+            gtype = NEXTHOP_TYPE_IPV4;
+          else
+            {
+              vty_out (vty, "%% Invalid nexthop%s", VTY_NEWLINE);
+              return CMD_WARNING;
+            }
+        }
+    }
+
+  if (outlabel_str)
+    {
+      if (outlabel_str[0] == 'i')
+        out_label = MPLS_IMP_NULL_LABEL;
+      else
+        out_label = atoi(outlabel_str);
+    }
+
+  if (add_cmd)
+    {
+      /* Check that label value is consistent. */
+      if (!zebra_mpls_lsp_label_consistent (zvrf, in_label, out_label, gtype,
+                                            &gate, NULL, 0))
+        {
+          vty_out (vty, "%% Label value not consistent%s",
+                   VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+
+      ret = zebra_mpls_static_lsp_add (zvrf, in_label, out_label, gtype,
+                                       &gate, NULL, 0);
+    }
+  else
+    ret = zebra_mpls_static_lsp_del (zvrf, in_label, gtype, &gate, NULL, 0);
+
+  if (ret)
+    {
+      vty_out (vty, "%% LSP cannot be %s%s",
+               add_cmd ? "added" : "deleted", VTY_NEWLINE);
+      return CMD_WARNING;
+    }
+
+  return CMD_SUCCESS;
+}
+
+DEFUN (mpls_transit_lsp,
+       mpls_transit_lsp_cmd,
+       "mpls lsp <16-1048575> (A.B.C.D|X:X::X:X) (<16-1048575>|implicit-null)",
+       MPLS_STR
+       "Establish label switched path\n"
+       "Incoming MPLS label\n"
+       "IPv4 gateway address\n"
+       "IPv6 gateway address\n"
+       "Outgoing MPLS label\n"
+       "Use Implicit-Null label\n")
+{
+  return zebra_mpls_transit_lsp (vty, 1, argv[0], argv[1], argv[2], NULL);
+}
+
+DEFUN (no_mpls_transit_lsp,
+       no_mpls_transit_lsp_cmd,
+       "no mpls lsp <16-1048575> (A.B.C.D|X:X::X:X)",
+       NO_STR
+       MPLS_STR
+       "Establish label switched path\n"
+       "Incoming MPLS label\n"
+       "IPv4 gateway address\n"
+       "IPv6 gateway address\n")
+{
+  return zebra_mpls_transit_lsp (vty, 0, argv[0], argv[1], NULL, NULL);
+}
+
+ALIAS (no_mpls_transit_lsp,
+       no_mpls_transit_lsp_out_label_cmd,
+       "no mpls lsp <16-1048575> (A.B.C.D|X:X::X:X) (<16-1048575>|implicit-null)",
+       NO_STR
+       MPLS_STR
+       "Establish label switched path\n"
+       "Incoming MPLS label\n"
+       "IPv4 gateway address\n"
+       "IPv6 gateway address\n"
+       "Outgoing MPLS label\n"
+       "Use Implicit-Null label\n")
+ 
+DEFUN (no_mpls_transit_lsp_all,
+       no_mpls_transit_lsp_all_cmd,
+       "no mpls lsp <16-1048575>",
+       NO_STR
+       MPLS_STR
+       "Establish label switched path\n"
+       "Incoming MPLS label\n")
+{
+  return zebra_mpls_transit_lsp (vty, 0, argv[0], NULL, NULL, NULL);
 }
 
 /* New RIB.  Detailed information for IPv4 route. */
@@ -5241,6 +5398,21 @@ zebra_ip_config (struct vty *vty)
   return write;
 }
 
+/* MPLS LSP configuration write function. */
+static int
+zebra_mpls_config (struct vty *vty)
+{
+  int write = 0;
+  struct zebra_vrf *zvrf;
+
+  zvrf = vrf_info_lookup(VRF_DEFAULT);
+  if (!zvrf)
+    return 0;
+
+  write += zebra_mpls_write_lsp_config(vty, zvrf);
+  return write;
+}
+
 static int config_write_vty(struct vty *vty)
 {
   int i;
@@ -5274,12 +5446,16 @@ static struct cmd_node protocol_node = { PROTOCOL_NODE, "", 1 };
 /* IP node for static routes. */
 static struct cmd_node ip_node = { IP_NODE,  "",  1 };
 
+/* MPLS node for MPLS LSP. */
+static struct cmd_node mpls_node = { MPLS_NODE,  "",  1 };
+
 /* Route VTY.  */
 void
 zebra_vty_init (void)
 {
   install_node (&ip_node, zebra_ip_config);
   install_node (&protocol_node, config_write_vty);
+  install_node (&mpls_node, zebra_mpls_config);
 
   install_element (CONFIG_NODE, &ip_mroute_cmd);
   install_element (CONFIG_NODE, &ip_mroute_dist_cmd);
@@ -5529,4 +5705,9 @@ zebra_vty_init (void)
 
   install_element (VIEW_NODE, &show_ipv6_mroute_vrf_all_cmd);
   install_element (ENABLE_NODE, &show_ipv6_mroute_vrf_all_cmd);
+
+  install_element (CONFIG_NODE, &mpls_transit_lsp_cmd);
+  install_element (CONFIG_NODE, &no_mpls_transit_lsp_cmd);
+  install_element (CONFIG_NODE, &no_mpls_transit_lsp_out_label_cmd);
+  install_element (CONFIG_NODE, &no_mpls_transit_lsp_all_cmd);
 }

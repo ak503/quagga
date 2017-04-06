@@ -111,6 +111,7 @@ enum node_type
   VTY_NODE,			/* Vty node. */
   LINK_PARAMS_NODE,		/* Link-parameters node */
   ZEBRA_IF_DEFAULTS_NODE,	/* If defaults dummy node */
+  MPLS_NODE,                    /* MPLS config node */
 };
 
 /* Node which has some commands and prompt string and configuration
@@ -519,6 +520,8 @@ struct cmd_token
 #define LINK_PARAMS_STR "Configure interface link parameters\n"
 #define OSPF_RI_STR "OSPF Router Information specific commands\n"
 #define PCE_STR "PCE Router Information specific commands\n"
+
+#define MPLS_STR "MPLS information\n"
 
 #define CONF_BACKUP_EXT ".sav"
 
