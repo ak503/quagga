@@ -26,6 +26,8 @@
 
 #include "prefix.h"
 
+#include "mpls.h"
+
 union g_addr {
   struct in_addr ipv4;
 #ifdef HAVE_IPV6
@@ -45,6 +47,15 @@ enum nexthop_types_t
   NEXTHOP_TYPE_IPV6_IFNAME,      /* IPv6 nexthop with ifname.  */
   NEXTHOP_TYPE_BLACKHOLE,        /* Null0 nexthop.  */
 };
+
+/* Nexthop label structure. */
+struct nexthop_label
+{
+  u_int8_t num_labels;
+  u_int8_t reserved[3];
+  mpls_label_t label[0]; /* 1 or more labels. */
+};
+
 
 /* Nexthop structure. */
 struct nexthop

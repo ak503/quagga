@@ -51,7 +51,7 @@ noinst_HEADERS = \
 	connected.h ioctl.h rib.h rt.h zserv.h redistribute.h debug.h rtadv.h \
 	interface.h ipforward.h irdp.h router-id.h kernel_socket.h \
 	rt_netlink.h zebra_fpm.h zebra_fpm_private.h \
-	ioctl_solaris.h zebra_rnh.h
+	ioctl_solaris.h zebra_rnh.h zebra_mpls.h
 
 zebra_LDADD = $(otherobj) ../lib/libzebra.la $(LIBCAP) $(Q_FPM_PB_CLIENT_LDOPTS)
 

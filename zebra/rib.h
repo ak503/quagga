@@ -328,6 +328,13 @@ struct zebra_vrf
 
   /* Recursive Nexthop table */
   struct route_table *rnh_table[AFI_MAX];
+
+  /* MPLS static LSP config table */
+  struct hash *slsp_table;
+
+  /* MPLS label forwarding table */
+  struct hash *lsp_table;
+
 };
 
 /*
