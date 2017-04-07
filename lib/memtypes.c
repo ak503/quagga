@@ -89,6 +89,10 @@ struct memory_list memory_list_zebra[] =
   { MTYPE_NETLINK_NAME,	"Netlink name"			},
   { MTYPE_NETLINK_RCVBUF,	"Netlink receive buffer"	},
   { MTYPE_RNH,		        "Nexthop tracking object"	},
+  { MTYPE_SLSP,                 "MPLS static LSP config"        },
+  { MTYPE_LSP,                  "MPLS LSP object"               },
+  { MTYPE_SNHLFE,               "MPLS static nexthop object"    },
+  { MTYPE_SNHLFE_IFNAME,	"MPLS static nexthop ifname"    },
   { -1, NULL },
 };
 
