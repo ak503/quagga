@@ -1399,10 +1399,24 @@ process_subq (struct list * subq, u_char qindex)
 static void
 meta_queue_process_complete (struct work_queue *dummy)
 {
+
+  struct zebra_vrf *zvrf;
+
   zebra_evaluate_rnh_table(0, AF_INET);
 #ifdef HAVE_IPV6
   zebra_evaluate_rnh_table(0, AF_INET6);
 #endif /* HAVE_IPV6 */
+
+  /* Schedule LSPs for processing, if needed. */
+  zvrf = vrf_info_lookup(VRF_DEFAULT);
+  if (mpls_should_lsps_be_processed(zvrf))
+    {
+      if (IS_ZEBRA_DEBUG_MPLS)
+        zlog_debug ("%u: Scheduling all LSPs upon RIB completion", zvrf->vrf_id);
+      zebra_mpls_lsp_schedule (zvrf);
+      mpls_unmark_lsps_for_processing(zvrf);
+    }
+
 }
 
 /* Dispatch the meta queue by picking, processing and unlocking the next RN from
