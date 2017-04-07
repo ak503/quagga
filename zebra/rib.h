@@ -326,6 +326,13 @@ struct zebra_vrf
   struct rtadv rtadv;
 #endif /* HAVE_RTADV */
 
+  /* MPLS static LSP config table */
+  struct hash *slsp_table;
+
+  /* MPLS label forwarding table */
+  struct hash *lsp_table;
+
+
   /* Recursive Nexthop table */
   struct route_table *rnh_table[AFI_MAX];
 };
