@@ -5414,6 +5414,37 @@ zebra_mpls_config (struct vty *vty)
   return write;
 }
 
+DEFUN (show_mpls_table,
+       show_mpls_table_cmd,
+       "show mpls table",
+       SHOW_STR
+       MPLS_STR
+       "MPLS table\n")
+{
+  struct zebra_vrf *zvrf;
+
+  zvrf = vrf_info_lookup(VRF_DEFAULT);
+  zebra_mpls_print_lsp_table(vty, zvrf);
+  return CMD_SUCCESS;
+}
+
+DEFUN (show_mpls_table_lsp,
+       show_mpls_table_lsp_cmd,
+       "show mpls table <16-1048575>",
+       SHOW_STR
+       MPLS_STR
+       "MPLS table\n"
+       "LSP to display information about\n")
+{
+  u_int32_t label;
+  struct zebra_vrf *zvrf;
+
+  zvrf = vrf_info_lookup(VRF_DEFAULT);
+  label = atoi(argv[0]);
+  zebra_mpls_print_lsp (vty, zvrf, label);
+  return CMD_SUCCESS;
+}
+
 static int config_write_vty(struct vty *vty)
 {
   int i;
@@ -5712,4 +5743,8 @@ zebra_vty_init (void)
   install_element (CONFIG_NODE, &no_mpls_transit_lsp_out_label_cmd);
   install_element (CONFIG_NODE, &no_mpls_transit_lsp_all_cmd);
 
+  install_element (VIEW_NODE, &show_mpls_table_cmd);
+  install_element (ENABLE_NODE, &show_mpls_table_cmd);
+  install_element (VIEW_NODE, &show_mpls_table_lsp_cmd);
+  install_element (ENABLE_NODE, &show_mpls_table_lsp_cmd);
 }
