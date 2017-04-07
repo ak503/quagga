@@ -1346,14 +1346,14 @@ addattr_l (struct nlmsghdr *n, size_t maxlen, int type, void *data, size_t alen)
 
   len = RTA_LENGTH (alen);
 
-  if (NLMSG_ALIGN (n->nlmsg_len) + len > maxlen)
+  if (NLMSG_ALIGN (n->nlmsg_len) + RTA_ALIGN (len) > maxlen)
     return -1;
 
   rta = (struct rtattr *) (((char *) n) + NLMSG_ALIGN (n->nlmsg_len));
   rta->rta_type = type;
   rta->rta_len = len;
   memcpy (RTA_DATA (rta), data, alen);
-  n->nlmsg_len = NLMSG_ALIGN (n->nlmsg_len) + len;
+  n->nlmsg_len = NLMSG_ALIGN (n->nlmsg_len) + RTA_ALIGN (len) ;
 
   return 0;
 }
