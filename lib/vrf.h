@@ -27,6 +27,7 @@
 
 /* The default VRF ID */
 #define VRF_DEFAULT 0
+#define NS_DEFAULT 0
 
 /*
  * The command strings

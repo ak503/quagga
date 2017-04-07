@@ -113,6 +113,10 @@ struct zebra_t
   /* rib work queue */
   struct work_queue *ribq;
   struct meta_queue *mq;
+
+  /* LSP work queue */
+  struct work_queue *lsp_process_q;
+
 };
 
 /* Prototypes. */
