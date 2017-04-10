@@ -450,7 +450,8 @@ zsend_route_multipath (int cmd, struct zserv *client, struct prefix *p,
   
   for (nexthop = rib->nexthop; nexthop; nexthop = nexthop->next)
     {
-      if (CHECK_FLAG(nexthop->flags, NEXTHOP_FLAG_ACTIVE))
+      if (rib->nexthop_active_num > 1 && client->proto != ZEBRA_ROUTE_LDP)
+      //FIXME: origin: if (CHECK_FLAG(nexthop->flags, NEXTHOP_FLAG_ACTIVE))
         {
           SET_FLAG (zapi_flags, ZAPI_MESSAGE_NEXTHOP);
           SET_FLAG (zapi_flags, ZAPI_MESSAGE_IFINDEX);
@@ -496,7 +497,9 @@ zsend_route_multipath (int cmd, struct zserv *client, struct prefix *p,
           stream_putc (s, 1);
           stream_putl (s, nexthop->ifindex);
 
-          break;
+          /* ldpd needs all nexthops */
+	  if (client->proto != ZEBRA_ROUTE_LDP)
+	    break;
         }
     }
 
