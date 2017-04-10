@@ -78,9 +78,11 @@ struct rib
 
   /* RIB internal status */
   u_char status;
-#define RIB_ENTRY_REMOVED	(1 << 0)
-#define RIB_ENTRY_CHANGED	(1 << 1)
-#define RIB_ENTRY_SELECTED_FIB	(1 << 2)
+
+#define RIB_ENTRY_REMOVED	   0x1
+#define RIB_ENTRY_NEXTHOPS_CHANGED 0x2
+#define RIB_ENTRY_CHANGED          0x4
+#define RIB_ENTRY_SELECTED_FIB     0x8
 
   /* Nexthop information. */
   u_char nexthop_num;
@@ -514,6 +516,8 @@ extern int rib_gc_dest (struct route_node *rn);
 extern struct route_table *rib_tables_iter_next (rib_tables_iter_t *iter);
 
 extern u_char route_distance(int type);
+
+//extern void rib_queue_add (struct zebra_t *zebra, struct route_node *rn);
 
 /*
  * Inline functions.

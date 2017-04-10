@@ -1317,7 +1317,7 @@ mpls_ftn_update (int add, struct zebra_vrf *zvrf, enum lsp_types_t type,
 
   SET_FLAG (rib->status, RIB_ENTRY_CHANGED);
   SET_FLAG (rib->status, RIB_ENTRY_NEXTHOPS_CHANGED);
-  rib_queue_add (rn);
+  rib_queue_add (&zebrad, rn);
 
   return 0;
 }
@@ -1517,7 +1517,7 @@ mpls_ldp_ftn_uninstall_all (struct zebra_vrf *zvrf, int afi)
 	    }
 
       if (update)
-	rib_queue_add (rn);
+	rib_queue_add (&zebrad, rn);
     }
 }
 

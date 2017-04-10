@@ -1484,14 +1484,20 @@ zebra_client_close (struct zserv *client)
 {
   zebra_cleanup_rnh_client(0, AF_INET, client);
   zebra_cleanup_rnh_client(0, AF_INET6, client);
+  vrf_iter_t iter;
+  struct zebra_vrf *zvrf;
 
-  if (client->proto == ZEBRA_ROUTE_LDP)
-    {
-      hash_iterate(zvrf->lsp_table, mpls_ldp_lsp_uninstall_all,
-		   zvrf->lsp_table);
-      mpls_ldp_ftn_uninstall_all (zvrf, AFI_IP);
-      mpls_ldp_ftn_uninstall_all (zvrf, AFI_IP6);
-    }
+  for (iter = vrf_first (); iter != VRF_ITER_INVALID; iter = vrf_next (iter))
+   {
+     if ((zvrf = vrf_iter2info (iter)) != NULL)
+        if (client->proto == ZEBRA_ROUTE_LDP)
+       {
+         hash_iterate(zvrf->lsp_table, mpls_ldp_lsp_uninstall_all,
+	   zvrf->lsp_table);
+         mpls_ldp_ftn_uninstall_all (zvrf, AFI_IP);
+         mpls_ldp_ftn_uninstall_all (zvrf, AFI_IP6);
+       }
+   }
 
 
   /* Close file descriptor. */
