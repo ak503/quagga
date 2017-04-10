@@ -143,8 +143,8 @@ copy_nexthops (struct nexthop **tnh, struct nexthop *nh)
       memcpy(&(nexthop->src), &(nh->src), sizeof(union g_addr));
 
       if (nh->nh_label)
-        nexthop_add_labels (nexthop, nh->nh_label->num_labels,
-                            &nh->nh_label->label[0]);
+        nexthop_add_labels (nexthop, nh->nh_label_type,
+		    nh->nh_label->num_labels, &nh->nh_label->label[0]);
 
       nexthop_add(tnh, nexthop);
 
@@ -182,12 +182,13 @@ nexthops_free (struct nexthop *nexthop)
 
 /* Update nexthop with label information. */
 void
-nexthop_add_labels (struct nexthop *nexthop, u_int8_t num_labels,
-                    mpls_label_t *label)
+nexthop_add_labels (struct nexthop *nexthop, enum lsp_types_t type,
+		    u_int8_t num_labels, mpls_label_t *label)
 {
   struct nexthop_label *nh_label;
   int i;
 
+  nexthop->nh_label_type = type;
   nh_label = XCALLOC (MTYPE_NH_LABEL, sizeof (struct nexthop_label));
   nh_label->num_labels = num_labels;
   for (i = 0; i < num_labels; i++)
@@ -200,6 +201,9 @@ void
 nexthop_del_labels (struct nexthop *nexthop)
 {
   if (nexthop->nh_label)
-    XFREE (MTYPE_NH_LABEL, nexthop->nh_label);
+    {
+      XFREE (MTYPE_NH_LABEL, nexthop->nh_label);
+      nexthop->nh_label_type = ZEBRA_LSP_NONE;
+    }
 }
 
