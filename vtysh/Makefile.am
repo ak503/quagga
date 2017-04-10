@@ -35,7 +35,9 @@ vtysh_cmd_FILES = $(top_srcdir)/bgpd/*.c $(top_srcdir)/isisd/*.c \
 		  $(top_srcdir)/zebra/rtadv.c $(top_srcdir)/zebra/zebra_vty.c \
 		  $(top_srcdir)/zebra/zserv.c $(top_srcdir)/zebra/router-id.c \
 		  $(top_srcdir)/zebra/zebra_routemap.c \
-	          $(top_srcdir)/zebra/zebra_fpm.c
+	          $(top_srcdir)/zebra/zebra_fpm.c \
+		  $(top_srcdir)/zebra/zebra_mpls_vty.c
+
 if LDPD
 vtysh_cmd_FILES += $(top_srcdir)/ldpd/ldp_vty_cmds.c
 endif

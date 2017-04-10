@@ -443,6 +443,21 @@ extern struct zebra_vrf *zebra_vrf_alloc (vrf_id_t);
 extern struct route_table *zebra_vrf_table (afi_t, safi_t, vrf_id_t);
 extern struct route_table *zebra_vrf_static_table (afi_t, safi_t, vrf_id_t);
 
+int
+zebra_static_ipv4_safi (struct vty *vty, safi_t safi, int add_cmd,
+		   const char *dest_str, const char *mask_str,
+		   const char *gate_str, const char *flag_str,
+		   const char *tag_str, const char *distance_str,
+		   const char *vrf_id_str, const char *label_str);
+
+int
+static_ipv6_func (struct vty *vty, int add_cmd, const char *dest_str,
+		  const char *gate_str, const char *ifname,
+		  const char *flag_str, const char *tag_str,
+                  const char *distance_str, const char *vrf_id_str,
+		  const char *label_str);
+
+
 /* NOTE:
  * All rib_add_ipv[46]* functions will not just add prefix into RIB, but
  * also implicitly withdraw equal prefix of same type. */
