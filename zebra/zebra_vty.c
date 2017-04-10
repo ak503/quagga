@@ -3494,6 +3494,12 @@ static_ipv6_func (struct vty *vty, int add_cmd, const char *dest_str,
   memset (&snh_label, 0, sizeof (struct static_nh_label));
   if (label_str)
     {
+      if (!mpls_enabled)
+	{
+	  vty_out (vty, "%% MPLS not turned on in kernel, ignoring command%s",
+		   VTY_NEWLINE);
+	  return CMD_WARNING;
+	}
       if (mpls_str2label (label_str, &snh_label.num_labels,
                           snh_label.label))
         {
