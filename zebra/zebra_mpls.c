@@ -1889,5 +1889,6 @@ zebra_mpls_init_tables (struct zebra_vrf *zvrf)
 void
 zebra_mpls_init (void)
 {
+  mpls_kernel_init ();
   mpls_processq_init (&zebrad);
 }
