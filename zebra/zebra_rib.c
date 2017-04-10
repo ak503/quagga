@@ -2164,6 +2164,8 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
   struct route_node *rn;
   struct route_table *table;
 
+  struct nexthop *nexthop = NULL;
+
   /* Lookup table.  */
   table = zebra_vrf_table (afi, safi, si->vrf_id);
   if (! table)
@@ -2192,24 +2194,32 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
       switch (si->type)
         {
 	case STATIC_IPV4_GATEWAY:
-	  rib_nexthop_ipv4_add (rib, &si->addr.ipv4, NULL);
+	  nexthop = rib_nexthop_ipv4_add (rib, &si->addr.ipv4, NULL);
 	  break;
+ 	case STATIC_IFINDEX:
 	case STATIC_IPV4_IFNAME:
-	  rib_nexthop_ifname_add (rib, si->ifname);
+	  nexthop = rib_nexthop_ifindex_add (rib, si->ifindex);
 	  break;
 	case STATIC_IPV4_BLACKHOLE:
-	  rib_nexthop_blackhole_add (rib);
+	  nexthop = rib_nexthop_blackhole_add (rib);
 	  break;
 	case STATIC_IPV6_GATEWAY:
-	  rib_nexthop_ipv6_add (rib, &si->addr.ipv6);
+	  nexthop = rib_nexthop_ipv6_add (rib, &si->addr.ipv6);
 	  break;
 	case STATIC_IPV6_IFNAME:
 	  rib_nexthop_ifname_add (rib, si->ifname);
 	  break;
+	case STATIC_IPV6_GATEWAY_IFINDEX:
 	case STATIC_IPV6_GATEWAY_IFNAME:
-	  rib_nexthop_ipv6_ifname_add (rib, &si->addr.ipv6, si->ifname);
+	  nexthop = rib_nexthop_ipv6_ifindex_add (rib, &si->addr.ipv6,si->ifindex);
 	  break;
         }
+
+      /* Update label(s), if present. */
+      if (si->snh_label.num_labels)
+	nexthop_add_labels (nexthop, si->snh_label.num_labels,
+			    &si->snh_label.label[0]);
+
       rib_queue_add (&zebrad, rn);
     }
   else
@@ -2228,24 +2238,31 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
       switch (si->type)
         {
 	case STATIC_IPV4_GATEWAY:
-	  rib_nexthop_ipv4_add (rib, &si->addr.ipv4, NULL);
+	  nexthop = rib_nexthop_ipv4_add (rib, &si->addr.ipv4, NULL);
 	  break;
 	case STATIC_IPV4_IFNAME:
-	  rib_nexthop_ifname_add (rib, si->ifname);
+	case STATIC_IFINDEX:
+	  nexthop = rib_nexthop_ifindex_add (rib, si->ifindex);
 	  break;
 	case STATIC_IPV4_BLACKHOLE:
-	  rib_nexthop_blackhole_add (rib);
+	  nexthop = rib_nexthop_blackhole_add (rib);
 	  break;
 	case STATIC_IPV6_GATEWAY:
-	  rib_nexthop_ipv6_add (rib, &si->addr.ipv6);
+	  nexthop = rib_nexthop_ipv6_add (rib, &si->addr.ipv6);
 	  break;
 	case STATIC_IPV6_IFNAME:
-	  rib_nexthop_ifname_add (rib, si->ifname);
+	  nexthop = rib_nexthop_ifname_add (rib, si->ifname);
 	  break;
+	case STATIC_IPV6_GATEWAY_IFINDEX:
 	case STATIC_IPV6_GATEWAY_IFNAME:
-	  rib_nexthop_ipv6_ifname_add (rib, &si->addr.ipv6, si->ifname);
+	 nexthop = rib_nexthop_ipv6_ifindex_add (rib, &si->addr.ipv6, si->ifindex);
 	  break;
         }
+
+      /* Update label(s), if present. */
+      if (si->snh_label.num_labels)
+	nexthop_add_labels (nexthop, si->snh_label.num_labels,
+			    &si->snh_label.label[0]);
 
       /* Save the flags of this static routes (reject, blackhole) */
       rib->flags = si->flags;
@@ -2256,33 +2273,63 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
 }
 
 static int
+static_nexthop_label_same (struct nexthop *nexthop,
+                           struct static_nh_label *snh_label)
+{
+  int i;
+
+  if ((snh_label->num_labels == 0 && nexthop->nh_label) ||
+      (snh_label->num_labels != 0 && !nexthop->nh_label))
+    return 0;
+
+  if (snh_label->num_labels != 0)
+    if (snh_label->num_labels != nexthop->nh_label->num_labels)
+    return 0;
+
+  for (i = 0; i < snh_label->num_labels; i++)
+    if (snh_label->label[i] != nexthop->nh_label->label[i])
+      return 0;
+
+  return 1;
+}
+
+static int
 static_nexthop_same (struct nexthop *nexthop, struct static_route *si)
 {
-  if (nexthop->type == NEXTHOP_TYPE_IPV4
-      && si->type == STATIC_IPV4_GATEWAY
-      && IPV4_ADDR_SAME (&nexthop->gate.ipv4, &si->addr.ipv4))
-    return 1;
-  if (nexthop->type == NEXTHOP_TYPE_IFNAME
-      && si->type == STATIC_IPV4_IFNAME
-      && strcmp (nexthop->ifname, si->ifname) == 0)
-    return 1;
+
+  int gw_match = 0;
+
   if (nexthop->type == NEXTHOP_TYPE_BLACKHOLE
       && si->type == STATIC_IPV4_BLACKHOLE)
     return 1;
-  if (nexthop->type == NEXTHOP_TYPE_IPV6
+
+  if (nexthop->type == NEXTHOP_TYPE_IPV4
+      && si->type == STATIC_IPV4_GATEWAY
+      && IPV4_ADDR_SAME (&nexthop->gate.ipv4, &si->addr.ipv4))
+    gw_match = 1;
+  else if (nexthop->type == NEXTHOP_TYPE_IFNAME
+      && si->type == STATIC_IPV4_IFNAME
+      && strcmp (nexthop->ifname, si->ifname) == 0)
+   gw_match = 1;
+  else if (nexthop->type == NEXTHOP_TYPE_IPV6
       && si->type == STATIC_IPV6_GATEWAY
       && IPV6_ADDR_SAME (&nexthop->gate.ipv6, &si->addr.ipv6))
-    return 1;
-  if (nexthop->type == NEXTHOP_TYPE_IFNAME
+    gw_match = 1;
+  else if (nexthop->type == NEXTHOP_TYPE_IFNAME
       && si->type == STATIC_IPV6_IFNAME
       && strcmp (nexthop->ifname, si->ifname) == 0)
-    return 1;
-  if (nexthop->type == NEXTHOP_TYPE_IPV6_IFNAME
+     gw_match = 1;
+  else if (nexthop->type == NEXTHOP_TYPE_IPV6_IFNAME
       && si->type == STATIC_IPV6_GATEWAY_IFNAME
       && IPV6_ADDR_SAME (&nexthop->gate.ipv6, &si->addr.ipv6)
       && strcmp (nexthop->ifname, si->ifname) == 0)
-    return 1;
-  return 0;
+    gw_match = 1;
+
+  if (!gw_match)
+    return 0;
+
+  /* Check match on label(s), if any */
+  return static_nexthop_label_same (nexthop, &si->snh_label);
 }
 
 /* Uninstall static route from RIB. */
