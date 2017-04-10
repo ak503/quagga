@@ -417,19 +417,19 @@ ldp_zebra_connected(struct zclient *zclient)
 		case ZEBRA_ROUTE_STATIC:
 		case ZEBRA_ROUTE_ISIS:
 			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    AFI_IP, i, 0, VRF_DEFAULT);
+			    i, VRF_DEFAULT);
 			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    AFI_IP6, i, 0, VRF_DEFAULT);
+			    i, VRF_DEFAULT);
 			break;
 		case ZEBRA_ROUTE_RIP:
 		case ZEBRA_ROUTE_OSPF:
 			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    AFI_IP, i, 0, VRF_DEFAULT);
+			    i, VRF_DEFAULT);
 			break;
 		case ZEBRA_ROUTE_RIPNG:
 		case ZEBRA_ROUTE_OSPF6:
 			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    AFI_IP6, i, 0, VRF_DEFAULT);
+			    i, VRF_DEFAULT);
 			break;
 		case ZEBRA_ROUTE_BGP:
 			/* LDP should follow the IGP and ignore BGP routes */
@@ -444,7 +444,7 @@ ldp_zebra_init(struct thread_master *master)
 {
 	/* Set default values. */
 	zclient = zclient_new(master);
-	zclient_init(zclient, ZEBRA_ROUTE_LDP, 0);
+	zclient_init(zclient, ZEBRA_ROUTE_LDP);
 
 	/* set callbacks */
 	zclient->zebra_connected = ldp_zebra_connected;

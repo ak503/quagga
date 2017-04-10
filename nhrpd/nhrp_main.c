@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 	/* Set umask before anything for security */
 	umask(0027);
 	progname = basename(argv[0]);
-	zlog_default = openzlog(progname, ZLOG_NHRP, LOG_CONS|LOG_NDELAY|LOG_PID, LOG_DAEMON);
+	zlog_default = openzlog(progname, ZLOG_NHRP, 0, LOG_CONS|LOG_NDELAY|LOG_PID, LOG_DAEMON);
 	zlog_set_level(NULL, ZLOG_DEST_STDOUT, LOG_WARNING);
 
 	parse_arguments(progname, argc, argv);

@@ -153,6 +153,7 @@ time_print(FILE *fp, struct timestamp_control *ctl)
 void
 vzlog (struct zlog *zl, int priority, const char *format, va_list args)
 {
+  char proto_str[32];
   int original_errno = errno;
   struct timestamp_control tsctl;
   tsctl.already_rendered = 0;
@@ -185,6 +186,11 @@ vzlog (struct zlog *zl, int priority, const char *format, va_list args)
       vsyslog (priority|zlog_default->facility, format, ac);
       va_end(ac);
     }
+
+  if (zl->instance)
+   sprintf (proto_str, "%s[%d]: ", zlog_proto_names[zl->protocol], zl->instance);
+  else
+   sprintf (proto_str, "%s: ", zlog_proto_names[zl->protocol]);
 
   /* File output. */
   if ((priority <= zl->maxlvl[ZLOG_DEST_FILE]) && zl->fp)
@@ -674,7 +680,7 @@ _zlog_assert_failed (const char *assertion, const char *file,
 
 /* Open log stream */
 struct zlog *
-openzlog (const char *progname, zlog_proto_t protocol,
+openzlog (const char *progname, zlog_proto_t protocol, u_short instance,
 	  int syslog_flags, int syslog_facility)
 {
   struct zlog *zl;
@@ -684,6 +690,7 @@ openzlog (const char *progname, zlog_proto_t protocol,
 
   zl->ident = progname;
   zl->protocol = protocol;
+  zl->instance = instance;
   zl->facility = syslog_facility;
   zl->syslog_options = syslog_flags;
 

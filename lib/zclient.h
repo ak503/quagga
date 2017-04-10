@@ -37,6 +37,14 @@
 /* Zebra header size. */
 #define ZEBRA_HEADER_SIZE             8
 
+
+struct redist_proto
+{
+  u_char enabled;
+  struct list *instances;
+};
+
+
 /* Structure for the zebra client. */
 struct zclient
 {
@@ -71,7 +79,9 @@ struct zclient
 
   /* Redistribute information. */
   u_char redist_default;
+  u_short instance;
   vrf_bitmap_t redist[ZEBRA_ROUTE_MAX];
+  struct redist_proto mi_redist[AFI_MAX][ZEBRA_ROUTE_MAX];
 
   /* Redistribute defauilt. */
   vrf_bitmap_t default_information;
@@ -91,6 +101,10 @@ struct zclient
   int (*ipv6_route_add) (int, struct zclient *, uint16_t, vrf_id_t);
   int (*ipv6_route_delete) (int, struct zclient *, uint16_t, vrf_id_t);
   int (*nexthop_update) (int, struct zclient *, uint16_t, vrf_id_t);
+  int (*redistribute_route_ipv4_add) (int, struct zclient *, uint16_t, vrf_id_t);
+  int (*redistribute_route_ipv4_del) (int, struct zclient *, uint16_t, vrf_id_t);
+  int (*redistribute_route_ipv6_add) (int, struct zclient *, uint16_t, vrf_id_t);
+  int (*redistribute_route_ipv6_del) (int, struct zclient *, uint16_t, vrf_id_t);
 };
 
 /* Zebra API message flag. */
@@ -155,6 +169,8 @@ extern void zclient_serv_path_set  (char *path);
 extern const char *zclient_serv_path_get (void);
 
 extern void zclient_send_requests (struct zclient *, vrf_id_t);
+
+extern void zclient_send_reg_requests (struct zclient *, vrf_id_t);
 
 /* Send redistribute command to zebra daemon. Do not update zclient state. */
 extern int zebra_redistribute_send (int command, struct zclient *, int type,

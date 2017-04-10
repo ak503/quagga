@@ -26,6 +26,18 @@
 
 #include "sockopt.h"
 
+#include <zebra.h>
+
+#include "thread.h"
+#include "linklist.h"
+#include "prefix.h"
+#include "if.h"
+#include "sockunion.h"
+#include "log.h"
+#include "sockopt.h"
+#include "privs.h"
+
+
 static struct if_addr	*if_addr_new(struct kaddr *);
 static struct if_addr	*if_addr_lookup(struct if_addr_head *, struct kaddr *);
 static int		 if_start(struct iface *, int);
@@ -490,7 +502,9 @@ if_join_ipv4_group(struct iface *iface, struct in_addr *addr)
 	if_addr.s_addr = if_get_ipv4_addr(iface);
 
 	if (setsockopt_ipv4_multicast(global.ipv4.ldp_disc_socket,
-	    IP_ADD_MEMBERSHIP, if_addr, addr->s_addr, iface->ifindex) < 0) {
+	    IP_ADD_MEMBERSHIP,
+	    if_addr, addr->s_addr,
+	    iface->ifindex) < 0) {
 		log_warn("%s: error IP_ADD_MEMBERSHIP, interface %s address %s",
 		     __func__, iface->name, inet_ntoa(*addr));
 		return (-1);

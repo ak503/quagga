@@ -375,6 +375,60 @@ zebra_hello_send (struct zclient *zclient)
   return 0;
 }
 
+void
+zclient_send_reg_requests (struct zclient *zclient, vrf_id_t vrf_id)
+{
+  int i;
+  afi_t afi;
+
+  /* zclient is disabled. */
+  if (! zclient->enable)
+    return;
+
+  /* If not connected to the zebra yet. */
+  if (zclient->sock < 0)
+    return;
+
+  if (zclient_debug)
+    zlog_debug ("%s: send register messages for VRF %u", __func__, vrf_id);
+
+  /* We need router-id information. */
+  zebra_message_send (zclient, ZEBRA_ROUTER_ID_ADD, vrf_id);
+
+  /* We need interface information. */
+  zebra_message_send (zclient, ZEBRA_INTERFACE_ADD, vrf_id);
+
+  /* Set unwanted redistribute route. */
+  for (afi = AFI_IP; afi < AFI_MAX; afi++)
+    vrf_bitmap_set (zclient->redist[zclient->redist_default], vrf_id);
+
+  /* Flush all redistribute request. */
+  if (vrf_id == VRF_DEFAULT)
+    for (afi = AFI_IP; afi < AFI_MAX; afi++)
+      for (i = 0; i < ZEBRA_ROUTE_MAX; i++)
+        if (zclient->mi_redist[afi][i].enabled)
+          {
+            struct listnode *node;
+            u_short *id;
+
+            for (ALL_LIST_ELEMENTS_RO(zclient->mi_redist[afi][i].instances, node, id))
+              if (!(i == zclient->redist_default && *id == zclient->instance))
+                zebra_redistribute_send (ZEBRA_REDISTRIBUTE_ADD, zclient, i, VRF_DEFAULT);
+          }
+
+  /* Flush all redistribute request. */
+  for (afi = AFI_IP; afi < AFI_MAX; afi++)
+    for (i = 0; i < ZEBRA_ROUTE_MAX; i++)
+      if (i != zclient->redist_default &&
+          vrf_bitmap_check (zclient->redist[i], vrf_id))
+        zebra_redistribute_send (ZEBRA_REDISTRIBUTE_ADD, zclient,  i,  vrf_id);
+
+  /* If default information is needed. */
+  if (vrf_bitmap_check (zclient->default_information, VRF_DEFAULT))
+    zebra_message_send (zclient, ZEBRA_REDISTRIBUTE_DEFAULT_ADD, vrf_id);
+}
+
+
 /* Send requests to zebra daemon for the information in a VRF. */
 void
 zclient_send_requests (struct zclient *zclient, vrf_id_t vrf_id)
