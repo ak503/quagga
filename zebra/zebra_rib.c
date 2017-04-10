@@ -2196,9 +2196,8 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
 	case STATIC_IPV4_GATEWAY:
 	  nexthop = rib_nexthop_ipv4_add (rib, &si->addr.ipv4, NULL);
 	  break;
- 	case STATIC_IFINDEX:
 	case STATIC_IPV4_IFNAME:
-	  nexthop = rib_nexthop_ifindex_add (rib, si->ifindex);
+	  nexthop = rib_nexthop_ifindex_add (rib, si->ifname);
 	  break;
 	case STATIC_IPV4_BLACKHOLE:
 	  nexthop = rib_nexthop_blackhole_add (rib);
@@ -2209,9 +2208,8 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
 	case STATIC_IPV6_IFNAME:
 	  rib_nexthop_ifname_add (rib, si->ifname);
 	  break;
-	case STATIC_IPV6_GATEWAY_IFINDEX:
 	case STATIC_IPV6_GATEWAY_IFNAME:
-	  nexthop = rib_nexthop_ipv6_ifindex_add (rib, &si->addr.ipv6,si->ifindex);
+	  nexthop = rib_nexthop_ipv6_ifindex_add (rib, &si->addr.ipv6,si->ifname);
 	  break;
         }
 
@@ -2241,8 +2239,7 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
 	  nexthop = rib_nexthop_ipv4_add (rib, &si->addr.ipv4, NULL);
 	  break;
 	case STATIC_IPV4_IFNAME:
-	case STATIC_IFINDEX:
-	  nexthop = rib_nexthop_ifindex_add (rib, si->ifindex);
+	  nexthop = rib_nexthop_ifindex_add (rib, si->ifname);
 	  break;
 	case STATIC_IPV4_BLACKHOLE:
 	  nexthop = rib_nexthop_blackhole_add (rib);
@@ -2253,9 +2250,8 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
 	case STATIC_IPV6_IFNAME:
 	  nexthop = rib_nexthop_ifname_add (rib, si->ifname);
 	  break;
-	case STATIC_IPV6_GATEWAY_IFINDEX:
 	case STATIC_IPV6_GATEWAY_IFNAME:
-	 nexthop = rib_nexthop_ipv6_ifindex_add (rib, &si->addr.ipv6, si->ifindex);
+	 nexthop = rib_nexthop_ipv6_ifindex_add (rib, &si->addr.ipv6, si->ifname);
 	  break;
         }
 
