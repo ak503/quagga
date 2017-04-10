@@ -36,6 +36,10 @@ vtysh_cmd_FILES = $(top_srcdir)/bgpd/*.c $(top_srcdir)/isisd/*.c \
 		  $(top_srcdir)/zebra/zserv.c $(top_srcdir)/zebra/router-id.c \
 		  $(top_srcdir)/zebra/zebra_routemap.c \
 	          $(top_srcdir)/zebra/zebra_fpm.c
+if LDPD
+vtysh_cmd_FILES += $(top_srcdir)/ldpd/ldp_vty_cmds.c
+endif
+
 
 vtysh_cmd.c: $(vtysh_cmd_FILES) extract.pl
 	./extract.pl $(vtysh_cmd_FILES) > vtysh_cmd.c
