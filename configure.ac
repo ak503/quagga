@@ -357,6 +357,8 @@ AC_ARG_ENABLE(werror,
   AS_HELP_STRING([--enable-werror], [enable -Werror (recommended for developers only)]))
 AC_ARG_ENABLE([protobuf],
   AS_HELP_STRING([--enable-protobuf], [Enable experimental protobuf support]))
+AC_ARG_ENABLE(mpls,
+  AS_HELP_STRING([--enable-mpls], [enable MPLS support - requires compatible kernel]))
 
 AC_CHECK_HEADERS(json-c/json.h)
 AC_CHECK_LIB(json-c, json_object_get, LIBS="$LIBS -ljson-c")
@@ -369,6 +371,29 @@ fi
 
 AC_ARG_ENABLE([dev_build],
     AS_HELP_STRING([--enable-dev-build], [build for development]))
+
+dnl ----------
+dnl MPLS check
+dnl ----------
+MPLS_METHOD=""
+AC_MSG_CHECKING(whether this OS has MPLS stack)
+if test "x${enable_mpls}" = "xyes"; then
+  case "$host" in
+    *-linux*)
+        AC_DEFINE(HAVE_MPLS,,Enable MPLS)
+        MPLS_METHOD="zebra_mpls_netlink.o"
+        AC_MSG_RESULT(Linux MPLS)
+    ;;
+    *)
+        AC_MSG_RESULT(Unsupported kernel)
+        MPLS_METHOD="zebra_mpls_null.o"
+    ;;
+  esac
+else
+  AC_MSG_RESULT(disabled)
+  MPLS_METHOD="zebra_mpls_null.o"
+fi
+AC_SUBST(MPLS_METHOD)
 
 if test x"${enable_gcc_rdynamic}" != x"no" ; then
   if test x"${enable_gcc_rdynamic}" = x"yes" -o x"$COMPILER" = x"GCC"; then

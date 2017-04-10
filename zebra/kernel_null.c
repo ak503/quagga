@@ -29,7 +29,6 @@
 #include "zebra/redistribute.h"
 #include "zebra/connected.h"
 #include "zebra/rib.h"
-#include "zebra/zebra_mpls.h"
 
 int kernel_route_rib (struct prefix *a, struct rib *old, struct rib *new) { return 0; }
 
@@ -61,10 +60,4 @@ void kernel_terminate (struct zebra_vrf *zvrf) { return; }
 #else
 void route_read (struct zebra_vrf *zvrf) { return; }
 #endif
-
-int kernel_add_lsp (zebra_lsp_t *l) { return 0; }
-
-int kernel_del_lsp (zebra_lsp_t *l) { return 0; }
-
-int kernel_upd_lsp (zebra_lsp_t *l) { return 0; }
 

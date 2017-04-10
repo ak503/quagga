@@ -14,9 +14,10 @@ rt_method = @RT_METHOD@
 rtread_method = @RTREAD_METHOD@
 kernel_method = @KERNEL_METHOD@
 ioctl_method = @IOCTL_METHOD@
+mpls_method = @MPLS_METHOD@
 
 otherobj = $(ioctl_method) $(ipforward) $(if_method) \
-	$(rt_method) $(rtread_method) $(kernel_method)
+	$(rt_method) $(rtread_method) $(kernel_method) $(mpls_method)
 
 if HAVE_NETLINK
 othersrc = zebra_fpm_netlink.c
@@ -45,7 +46,8 @@ zebra_SOURCES = \
 
 testzebra_SOURCES = test_main.c zebra_rib.c interface.c connected.c debug.c \
 	zebra_vty.c \
-	kernel_null.c  redistribute_null.c ioctl_null.c misc_null.c zebra_rnh_null.c zebra_mpls_null.c
+	kernel_null.c  redistribute_null.c ioctl_null.c misc_null.c zebra_rnh_null.c zebra_mpls_null.c \
+	zebra_mpls.c
 
 noinst_HEADERS = \
 	connected.h ioctl.h rib.h rt.h zserv.h redistribute.h debug.h rtadv.h \
