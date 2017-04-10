@@ -3578,7 +3578,7 @@ static int
 static_ipv6_func (struct vty *vty, int add_cmd, const char *dest_str,
 		  const char *gate_str, const char *ifname,
 		  const char *flag_str, const char *tag_str,
-		  const char *distance_str, const char *vrf_id_str)
+		  const char *distance_str, const char *vrf_id_str, const char *label_str)
 {
   int ret;
   u_char distance;
@@ -3633,13 +3633,23 @@ static_ipv6_func (struct vty *vty, int add_cmd, const char *dest_str,
   if (tag_str)
     tag = atoi(tag_str);
 
-  /* Labels -- not supported for IPv6 for now. */
-  memset (&snh_label, 0, sizeof (struct static_nh_label));
-
 
   /* When gateway is valid IPv6 addrees, then gate is treated as
      nexthop address other case gate is treated as interface name. */
   ret = inet_pton (AF_INET6, gate_str, &gate_addr);
+
+  /* Labels */
+  memset (&snh_label, 0, sizeof (struct static_nh_label));
+  if (label_str)
+    {
+      if (mpls_str2label (label_str, &snh_label.num_labels,
+                          snh_label.label))
+        {
+          vty_out (vty, "%% Malformed label(s)%s", VTY_NEWLINE);
+          return CMD_WARNING;
+        }
+    }
+
 
   if (ifname)
     {
@@ -3689,7 +3699,7 @@ DEFUN (ipv6_route,
        "IPv6 gateway interface name\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, NULL,
-                           NULL, NULL);
+                           NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_tag,
@@ -3703,7 +3713,7 @@ DEFUN (ipv6_route_tag,
        "Set tag for this route\n"
        "Tag value\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], NULL, NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_tag_vrf,
@@ -3718,7 +3728,7 @@ DEFUN (ipv6_route_tag_vrf,
        "Tag value\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], NULL, argv[3]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], NULL, argv[3], NULL);
 }
 
 DEFUN (ipv6_route_flags,
@@ -3733,7 +3743,7 @@ DEFUN (ipv6_route_flags,
        "Silently discard pkts when matched\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], NULL,
-                           NULL, NULL);
+                           NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_flags_tag,
@@ -3749,7 +3759,7 @@ DEFUN (ipv6_route_flags_tag,
        "Set tag for this route\n"
        "Tag value\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], NULL, NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_flags_tag_vrf,
@@ -3766,7 +3776,7 @@ DEFUN (ipv6_route_flags_tag_vrf,
        "Tag value\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], NULL, argv[4]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], NULL, argv[4], NULL);
 }
 
 DEFUN (ipv6_route_ifname,
@@ -3779,7 +3789,7 @@ DEFUN (ipv6_route_ifname,
        "IPv6 gateway interface name\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, NULL,
-                           NULL, NULL);
+                           NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_tag,
@@ -3793,7 +3803,7 @@ DEFUN (ipv6_route_ifname_tag,
        "Set tag for this route\n"
        "Tag value\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], NULL, NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_tag_vrf,
@@ -3808,7 +3818,7 @@ DEFUN (ipv6_route_ifname_tag_vrf,
        "Tag value\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], NULL, argv[4]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], NULL, argv[4], NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags,
@@ -3823,7 +3833,7 @@ DEFUN (ipv6_route_ifname_flags,
        "Silently discard pkts when matched\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], NULL,
-                           NULL, NULL);
+                           NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_tag,
@@ -3839,7 +3849,7 @@ DEFUN (ipv6_route_ifname_flags_tag,
        "Set tag for this route\n"
        "Tag value\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], NULL, NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], NULL, NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_tag_vrf,
@@ -3856,7 +3866,7 @@ DEFUN (ipv6_route_ifname_flags_tag_vrf,
        "Tag value\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], NULL, argv[5]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], NULL, argv[5], NULL);
 }
 
 DEFUN (ipv6_route_pref,
@@ -3870,7 +3880,7 @@ DEFUN (ipv6_route_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, NULL, argv[2],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (ipv6_route_pref_tag,
@@ -3885,7 +3895,7 @@ DEFUN (ipv6_route_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], argv[3], NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], argv[3], NULL, NULL);
 }
 
 DEFUN (ipv6_route_pref_tag_vrf,
@@ -3901,7 +3911,7 @@ DEFUN (ipv6_route_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], argv[3], argv[4]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, argv[2], argv[3], argv[4], NULL);
 }
 
 DEFUN (ipv6_route_flags_pref,
@@ -3917,7 +3927,7 @@ DEFUN (ipv6_route_flags_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], NULL, argv[3],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (ipv6_route_flags_pref_tag,
@@ -3934,7 +3944,7 @@ DEFUN (ipv6_route_flags_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], NULL, NULL);
 }
 
 DEFUN (ipv6_route_flags_pref_tag_vrf,
@@ -3952,7 +3962,7 @@ DEFUN (ipv6_route_flags_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], argv[5]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], argv[5], NULL);
 }
 
 DEFUN (ipv6_route_ifname_pref,
@@ -3966,7 +3976,7 @@ DEFUN (ipv6_route_ifname_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, NULL, argv[3],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_pref_tag,
@@ -3981,7 +3991,7 @@ DEFUN (ipv6_route_ifname_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_pref_tag_vrf,
@@ -3997,7 +4007,7 @@ DEFUN (ipv6_route_ifname_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], argv[5]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], argv[5], NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_pref,
@@ -4013,7 +4023,7 @@ DEFUN (ipv6_route_ifname_flags_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], NULL, argv[4],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_pref_tag,
@@ -4030,7 +4040,7 @@ DEFUN (ipv6_route_ifname_flags_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], NULL);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], NULL, NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_pref_tag_vrf,
@@ -4048,7 +4058,7 @@ DEFUN (ipv6_route_ifname_flags_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
+  return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], NULL);
 }
 
 DEFUN (no_ipv6_route,
@@ -4062,7 +4072,7 @@ DEFUN (no_ipv6_route,
        "IPv6 gateway interface name\n")
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, NULL, NULL,
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_tag,
@@ -4077,7 +4087,7 @@ DEFUN (no_ipv6_route_tag,
        "Set tag for this route\n"
        "Tag value\n")
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], NULL, NULL);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], NULL, NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_tag_vrf,
@@ -4093,7 +4103,7 @@ DEFUN (no_ipv6_route_tag_vrf,
        "Tag value\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], NULL, argv[3]);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], NULL, argv[3], NULL);
 }
 
 ALIAS (no_ipv6_route,
@@ -4133,7 +4143,7 @@ DEFUN (no_ipv6_route_ifname,
        "IPv6 gateway interface name\n")
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, NULL, NULL,
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_tag,
@@ -4148,7 +4158,7 @@ DEFUN (no_ipv6_route_ifname_tag,
        "Set tag for this route\n"
        "Tag value\n")
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], NULL, NULL);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], NULL, NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_tag_vrf,
@@ -4164,7 +4174,7 @@ DEFUN (no_ipv6_route_ifname_tag_vrf,
        "Tag value\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], NULL, argv[4]);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], NULL, argv[4], NULL);
 }
 
 ALIAS (no_ipv6_route_ifname,
@@ -4205,7 +4215,7 @@ DEFUN (no_ipv6_route_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, NULL, argv[2],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_pref_tag,
@@ -4221,7 +4231,7 @@ DEFUN (no_ipv6_route_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], argv[3], NULL);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], argv[3], NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_pref_tag_vrf,
@@ -4238,7 +4248,7 @@ DEFUN (no_ipv6_route_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], argv[3], argv[4]);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, argv[2], argv[3], argv[4], NULL);
 }
 
 DEFUN (no_ipv6_route_flags_pref,
@@ -4256,7 +4266,7 @@ DEFUN (no_ipv6_route_flags_pref,
 {
   /* We do not care about argv[2] */
   return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, argv[2], NULL, argv[3],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_flags_pref_tag,
@@ -4275,7 +4285,7 @@ DEFUN (no_ipv6_route_flags_pref_tag,
        "Distance value for this prefix\n")
 {
   /* We do not care about argv[2] */
-  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], NULL);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_flags_pref_tag_vrf,
@@ -4295,7 +4305,7 @@ DEFUN (no_ipv6_route_flags_pref_tag_vrf,
        VRF_CMD_HELP_STR)
 {
   /* We do not care about argv[2] */
-  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], argv[5]);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, argv[2], argv[3], argv[4], argv[5], NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_pref,
@@ -4310,7 +4320,7 @@ DEFUN (no_ipv6_route_ifname_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, NULL, argv[3],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_pref_tag,
@@ -4326,7 +4336,7 @@ DEFUN (no_ipv6_route_ifname_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], NULL);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_pref_tag_vrf,
@@ -4343,7 +4353,7 @@ DEFUN (no_ipv6_route_ifname_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], argv[5]);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, argv[3], argv[4], argv[5], NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_flags_pref,
@@ -4360,7 +4370,7 @@ DEFUN (no_ipv6_route_ifname_flags_pref,
        "Distance value for this prefix\n")
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], argv[3], NULL, argv[4],
-                           NULL);
+                           NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_flags_pref_tag,
@@ -4378,7 +4388,7 @@ DEFUN (no_ipv6_route_ifname_flags_pref_tag,
        "Tag value\n"
        "Distance value for this prefix\n")
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], NULL);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], NULL, NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_flags_pref_tag_vrf,
@@ -4397,7 +4407,7 @@ DEFUN (no_ipv6_route_ifname_flags_pref_tag_vrf,
        "Distance value for this prefix\n"
        VRF_CMD_HELP_STR)
 {
-  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
+  return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], NULL);
 }
 
 DEFUN (ipv6_route_vrf,
@@ -4411,7 +4421,7 @@ DEFUN (ipv6_route_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, NULL, NULL,
-                           argv[2]);
+                           argv[2], NULL);
 }
 
 DEFUN (ipv6_route_flags_vrf,
@@ -4427,7 +4437,7 @@ DEFUN (ipv6_route_flags_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], NULL, NULL,
-                           argv[3]);
+                           argv[3], NULL);
 }
 
 DEFUN (ipv6_route_ifname_vrf,
@@ -4441,7 +4451,7 @@ DEFUN (ipv6_route_ifname_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, NULL, NULL,
-                           argv[3]);
+                           argv[3], NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_vrf,
@@ -4457,7 +4467,7 @@ DEFUN (ipv6_route_ifname_flags_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], NULL, NULL,
-                           argv[4]);
+                           argv[4], NULL);
 }
 
 DEFUN (ipv6_route_pref_vrf,
@@ -4472,7 +4482,7 @@ DEFUN (ipv6_route_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, NULL, NULL, argv[2],
-                           argv[3]);
+                           argv[3], NULL);
 }
 
 DEFUN (ipv6_route_flags_pref_vrf,
@@ -4489,7 +4499,7 @@ DEFUN (ipv6_route_flags_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], NULL, argv[2], NULL, argv[3],
-                           argv[4]);
+                           argv[4], NULL);
 }
 
 DEFUN (ipv6_route_ifname_pref_vrf,
@@ -4504,7 +4514,7 @@ DEFUN (ipv6_route_ifname_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], NULL, NULL, argv[3],
-                           argv[4]);
+                           argv[4], NULL);
 }
 
 DEFUN (ipv6_route_ifname_flags_pref_vrf,
@@ -4521,7 +4531,7 @@ DEFUN (ipv6_route_ifname_flags_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 1, argv[0], argv[1], argv[2], argv[3], NULL, argv[4],
-                           argv[5]);
+                           argv[5], NULL);
 }
 
 DEFUN (no_ipv6_route_vrf,
@@ -4536,7 +4546,7 @@ DEFUN (no_ipv6_route_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, NULL, NULL,
-                           (argc > 3) ? argv[3] : argv[2]);
+                           (argc > 3) ? argv[3] : argv[2], NULL);
 }
 
 ALIAS (no_ipv6_route_vrf,
@@ -4564,7 +4574,7 @@ DEFUN (no_ipv6_route_ifname_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, NULL, NULL,
-                           (argc > 4) ? argv[4] : argv[3]);
+                           (argc > 4) ? argv[4] : argv[3], NULL);
 }
 
 ALIAS (no_ipv6_route_ifname_vrf,
@@ -4593,7 +4603,7 @@ DEFUN (no_ipv6_route_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, NULL, NULL, argv[2],
-                           argv[3]);
+                           argv[3], NULL);
 }
 
 DEFUN (no_ipv6_route_flags_pref_vrf,
@@ -4612,7 +4622,7 @@ DEFUN (no_ipv6_route_flags_pref_vrf,
 {
   /* We do not care about argv[2] */
   return static_ipv6_func (vty, 0, argv[0], argv[1], NULL, argv[2], NULL, argv[3],
-                           argv[4]);
+                           argv[4], NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_pref_vrf,
@@ -4628,7 +4638,7 @@ DEFUN (no_ipv6_route_ifname_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], NULL, NULL, argv[3],
-                           argv[4]);
+                           argv[4], NULL);
 }
 
 DEFUN (no_ipv6_route_ifname_flags_pref_vrf,
@@ -4646,7 +4656,7 @@ DEFUN (no_ipv6_route_ifname_flags_pref_vrf,
        VRF_CMD_HELP_STR)
 {
   return static_ipv6_func (vty, 0, argv[0], argv[1], argv[2], argv[3], NULL, argv[4],
-                           argv[5]);
+                           argv[5], NULL);
 }
 
 DEFUN (show_ipv6_route,
@@ -5423,6 +5433,12 @@ static_config_ipv6 (struct vty *vty)
 
             if (si->vrf_id != VRF_DEFAULT)
               vty_out (vty, " vrf %u", si->vrf_id);
+
+            /* Label information */
+            if (si->snh_label.num_labels)
+              vty_out (vty, " label %s",
+                       mpls_label2str (si->snh_label.num_labels,
+                                       si->snh_label.label, buf, sizeof buf));
 
             vty_out (vty, "%s", VTY_NEWLINE);
 
