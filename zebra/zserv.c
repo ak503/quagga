@@ -504,6 +504,11 @@ zsend_route_multipath (int cmd, struct zserv *client, struct prefix *p,
         }
     }
 
+ /* Distance */
+  SET_FLAG (zapi_flags, ZAPI_MESSAGE_DISTANCE);
+  stream_putc (s, rib->distance);
+
+
   /* Metric */
   if (cmd == ZEBRA_IPV4_ROUTE_ADD || cmd == ZEBRA_IPV6_ROUTE_ADD)
     {
