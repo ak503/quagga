@@ -3383,13 +3383,14 @@ static_config_ipv4 (struct vty *vty, safi_t safi, const char *cmd)
             if (si->vrf_id != VRF_DEFAULT)
               vty_out (vty, " vrf %u", si->vrf_id);
 
-            vty_out (vty, "%s", VTY_NEWLINE);
-
             /* Label information */
             if (si->snh_label.num_labels)
               vty_out (vty, " label %s",
                        mpls_label2str (si->snh_label.num_labels,
                                        si->snh_label.label, buf, sizeof buf));
+
+            vty_out (vty, "%s", VTY_NEWLINE);
+
             write = 1;
           }
     }
