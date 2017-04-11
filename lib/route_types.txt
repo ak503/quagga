@@ -62,6 +62,7 @@ ZEBRA_ROUTE_OLSR,       olsr,      olsrd,  'o', 0, 0, "OLSR"
 ZEBRA_ROUTE_BABEL,      babel,     babeld, 'A', 1, 1, "Babel"
 ZEBRA_ROUTE_NHRP,       nhrp,      nhrpd,  'N', 1, 1, "NHRP"
 ZEBRA_ROUTE_LDP,        ldp,       ldpd,   'L', 0, 0, "LDP"
+ZEBRA_ROUTE_ALL,        wildcard,  none,   '-', 0, 0, "-"
 
 ## help strings
 ZEBRA_ROUTE_SYSTEM, "Reserved route type, for internal use only"

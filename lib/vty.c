@@ -2670,6 +2670,7 @@ vty_log_fixed (char *buf, size_t len)
     }
 }
 
+
 int
 vty_config_lock (struct vty *vty)
 {

@@ -100,10 +100,10 @@ zebra_send_mpls_labels(int cmd, struct kroute *kr)
 	    kr->remote_label == NO_LABEL)
 		return (0);
 
-	debug_zebra_out("prefix %s/%u nexthop %s labels %s/%s (%s)",
+	debug_zebra_out("prefix %s/%u nexthop %s ifindex %u labels %s/%s (%s)",
 	    log_addr(kr->af, &kr->prefix), kr->prefixlen,
-	    log_addr(kr->af, &kr->nexthop), log_label(kr->local_label),
-	    log_label(kr->remote_label),
+	    log_addr(kr->af, &kr->nexthop), kr->ifindex,
+	    log_label(kr->local_label), log_label(kr->remote_label),
 	    (cmd == ZEBRA_MPLS_LABELS_ADD) ? "add" : "delete");
 
 	/* Reset stream. */
@@ -127,6 +127,7 @@ zebra_send_mpls_labels(int cmd, struct kroute *kr)
 	default:
 		fatalx("kr_change: unknown af");
 	}
+	stream_putl(s, kr->ifindex);
 	stream_putc(s, kr->priority);
 	stream_putl(s, kr->local_label);
 	stream_putl(s, kr->remote_label);
@@ -359,25 +360,30 @@ ldp_zebra_read_route(int command, struct zclient *zclient, zebra_size_t length,
 	s = zclient->ibuf;
 
 	type = stream_getc(s);
-	if (type == ZEBRA_ROUTE_CONNECT)
+	switch (type) {
+	case ZEBRA_ROUTE_CONNECT:
 		kr.flags |= F_CONNECTED;
-	stream_getc(s); /* flags, unused */
+		break;
+	case ZEBRA_ROUTE_BGP:
+		/* LDP should follow the IGP and ignore BGP routes */
+		return (0);
+	default:
+		break;
+	}
+
+	stream_getl(s); /* flags, unused */
 	stream_getw(s); /* instance, unused */
 	message_flags = stream_getc(s);
 	if (!CHECK_FLAG(message_flags, ZAPI_MESSAGE_NEXTHOP))
 		return (0);
 
 	switch (command) {
-	case ZEBRA_IPV4_ROUTE_ADD:
 	case ZEBRA_REDISTRIBUTE_IPV4_ADD:
-	case ZEBRA_IPV4_ROUTE_DELETE:
 	case ZEBRA_REDISTRIBUTE_IPV4_DEL:
 		kr.af = AF_INET;
 		nhlen = sizeof(struct in_addr);
 		break;
-	case ZEBRA_IPV6_ROUTE_ADD:
 	case ZEBRA_REDISTRIBUTE_IPV6_ADD:
-	case ZEBRA_IPV6_ROUTE_DELETE:
 	case ZEBRA_REDISTRIBUTE_IPV6_DEL:
 		kr.af = AF_INET6;
 		nhlen = sizeof(struct in6_addr);
@@ -419,25 +425,21 @@ ldp_zebra_read_route(int command, struct zclient *zclient, zebra_size_t length,
 		kr.ifindex = stream_getl(s);
 
 		switch (command) {
-		case ZEBRA_IPV4_ROUTE_ADD:
 		case ZEBRA_REDISTRIBUTE_IPV4_ADD:
-		case ZEBRA_IPV6_ROUTE_ADD:
 		case ZEBRA_REDISTRIBUTE_IPV6_ADD:
-			debug_zebra_in("route add %s/%d nexthop %s (%s)",
-			    log_addr(kr.af, &kr.prefix), kr.prefixlen,
-			    log_addr(kr.af, &kr.nexthop),
-			    zebra_route_string(type));
+			debug_zebra_in("route add %s/%d nexthop %s "
+			    "ifindex %u (%s)", log_addr(kr.af, &kr.prefix),
+			    kr.prefixlen, log_addr(kr.af, &kr.nexthop),
+			    kr.ifindex, zebra_route_string(type));
 			main_imsg_compose_lde(IMSG_NETWORK_ADD, 0, &kr,
 			    sizeof(kr));
 			break;
-		case ZEBRA_IPV4_ROUTE_DELETE:
 		case ZEBRA_REDISTRIBUTE_IPV4_DEL:
-		case ZEBRA_IPV6_ROUTE_DELETE:
 		case ZEBRA_REDISTRIBUTE_IPV6_DEL:
-			debug_zebra_in("route delete %s/%d nexthop %s (%s)",
-			    log_addr(kr.af, &kr.prefix), kr.prefixlen,
-			    log_addr(kr.af, &kr.nexthop),
-			    zebra_route_string(type));
+			debug_zebra_in("route delete %s/%d nexthop %s "
+			    "ifindex %u (%s)", log_addr(kr.af, &kr.prefix),
+			    kr.prefixlen, log_addr(kr.af, &kr.nexthop),
+			    kr.ifindex, zebra_route_string(type));
 			main_imsg_compose_lde(IMSG_NETWORK_DEL, 0, &kr,
 			    sizeof(kr));
 			break;
@@ -446,43 +448,20 @@ ldp_zebra_read_route(int command, struct zclient *zclient, zebra_size_t length,
 		}
 	}
 
+	if (command == ZEBRA_REDISTRIBUTE_IPV4_ADD ||
+	    command == ZEBRA_REDISTRIBUTE_IPV6_ADD)
+		main_imsg_compose_lde(IMSG_NETWORK_ADD_END, 0, &kr, sizeof(kr));
+
 	return (0);
 }
 
 static void
 ldp_zebra_connected(struct zclient *zclient)
 {
-	int	i;
-
 	zclient_send_reg_requests(zclient, VRF_DEFAULT);
-
-	for (i = 0; i < ZEBRA_ROUTE_MAX; i++) {
-		switch (i) {
-		case ZEBRA_ROUTE_KERNEL:
-		case ZEBRA_ROUTE_CONNECT:
-		case ZEBRA_ROUTE_STATIC:
-		case ZEBRA_ROUTE_ISIS:
-			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    i, VRF_DEFAULT);
-			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    i, VRF_DEFAULT);
-			break;
-		case ZEBRA_ROUTE_RIP:
-		case ZEBRA_ROUTE_OSPF:
-			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    i, VRF_DEFAULT);
-			break;
-		case ZEBRA_ROUTE_RIPNG:
-		case ZEBRA_ROUTE_OSPF6:
-			zclient_redistribute(ZEBRA_REDISTRIBUTE_ADD, zclient,
-			    i, VRF_DEFAULT);
-			break;
-		case ZEBRA_ROUTE_BGP:
-			/* LDP should follow the IGP and ignore BGP routes */
-		default:
-			break;
-		}
-	}
+	//zebra_redistribute_send(ZEBRA_REDISTRIBUTE_ADD, zclient, AFI_IP, ZEBRA_ROUTE_ALL, 0, VRF_DEFAULT);
+	//zebra_redistribute_send(ZEBRA_REDISTRIBUTE_ADD, zclient, AFI_IP6, ZEBRA_ROUTE_ALL, 0, VRF_DEFAULT);
+	zebra_redistribute_send (ZEBRA_REDISTRIBUTE_ADD, zclient, ZEBRA_ROUTE_ALL, VRF_DEFAULT);
 }
 
 void
@@ -501,12 +480,8 @@ ldp_zebra_init(struct thread_master *master)
 	zclient->interface_down = ldp_interface_status_change;
 	zclient->interface_address_add = ldp_interface_address_add;
 	zclient->interface_address_delete = ldp_interface_address_delete;
-	zclient->ipv4_route_add = ldp_zebra_read_route;
-	zclient->ipv4_route_delete = ldp_zebra_read_route;
 	zclient->redistribute_route_ipv4_add = ldp_zebra_read_route;
 	zclient->redistribute_route_ipv4_del = ldp_zebra_read_route;
-	zclient->ipv6_route_add = ldp_zebra_read_route;
-	zclient->ipv6_route_delete = ldp_zebra_read_route;
 	zclient->redistribute_route_ipv6_add = ldp_zebra_read_route;
 	zclient->redistribute_route_ipv6_del = ldp_zebra_read_route;
 }

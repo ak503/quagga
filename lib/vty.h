@@ -76,6 +76,12 @@ struct vty
   /* For multiple level index treatment such as key chain and key. */
   void *index_sub;
 
+  /* qobj object ID (replacement for "index") */
+  uint64_t qobj_index;
+
+  /* qobj second-level object ID (replacement for "index_sub") */
+  uint64_t qobj_index_sub;
+
   /* For escape character. */
   unsigned char escape;
 
@@ -130,6 +136,42 @@ struct vty_arg
   const char **argv;
   int argc;
 };
+
+
+static inline void vty_push_context(struct vty *vty,
+                                    int node, uint64_t id, void *idx)
+{
+  vty->node = node;
+  vty->qobj_index = id;
+#if defined(VTY_DEPRECATE_INDEX) && defined(__GNUC__) && \
+    (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  vty->index = idx;
+#pragma GCC diagnostic pop
+#else
+  vty->index = idx;
+#endif
+}
+
+
+/* can return NULL if context is invalid! */
+#define VTY_GET_CONTEXT(structname) \
+	QOBJ_GET_TYPESAFE(vty->qobj_index, structname)
+#define VTY_GET_CONTEXT_SUB(structname) \
+	QOBJ_GET_TYPESAFE(vty->qobj_index_sub, structname)
+
+#define VTY_PUSH_CONTEXT(nodeval, ptr) \
+	vty_push_context(vty, nodeval, QOBJ_ID(ptr), NULL)
+#define VTY_PUSH_CONTEXT_COMPAT(nodeval, ptr) \
+	vty_push_context(vty, nodeval, QOBJ_ID(ptr), ptr)
+
+
+#define VTY_PUSH_CONTEXT_SUB(nodeval, ptr) do { \
+		vty->node = nodeval; \
+		/* qobj_index stays untouched */ \
+		vty->qobj_index_sub = QOBJ_ID(ptr); \
+	} while (0)
 
 /* Integrated configuration file. */
 #define INTEGRATE_DEFAULT_CONFIG "Quagga.conf"

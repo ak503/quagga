@@ -26,6 +26,7 @@
 #include "openbsd-tree.h"
 #include "imsg.h"
 #include "thread.h"
+#include "qobj.h"
 
 #include "ldp.h"
 
@@ -117,6 +118,7 @@ enum imsg_type {
 	IMSG_NEIGHBOR_UP,
 	IMSG_NEIGHBOR_DOWN,
 	IMSG_NETWORK_ADD,
+	IMSG_NETWORK_ADD_END,
 	IMSG_NETWORK_DEL,
 	IMSG_SOCKET_IPC,
 	IMSG_SOCKET_NET,
@@ -194,7 +196,10 @@ enum nbr_action {
 	NBR_ACT_CLOSE_SESSION
 };
 
-TAILQ_HEAD(mapping_head, mapping_entry);
+/* forward declarations */
+RB_HEAD(global_adj_head, adj);
+RB_HEAD(nbr_adj_head, adj);
+RB_HEAD(ia_adj_head, adj);
 
 struct map {
 	uint8_t		type;
@@ -254,7 +259,7 @@ struct iface_af {
 	int			 af;
 	int			 enabled;
 	int			 state;
-	LIST_HEAD(, adj)	 adj_list;
+	struct ia_adj_head	 adj_tree;
 	time_t			 uptime;
 	struct thread		*hello_timer;
 	uint16_t		 hello_holdtime;
@@ -262,7 +267,7 @@ struct iface_af {
 };
 
 struct iface {
-	LIST_ENTRY(iface)	 entry;
+	RB_ENTRY(iface)		 entry;
 	char			 name[IF_NAMESIZE];
 	unsigned int		 ifindex;
 	struct if_addr_head	 addr_list;
@@ -271,11 +276,15 @@ struct iface {
 	uint16_t		 flags;
 	struct iface_af		 ipv4;
 	struct iface_af		 ipv6;
+	QOBJ_FIELDS
 };
+RB_HEAD(iface_head, iface);
+RB_PROTOTYPE(iface_head, iface, entry, iface_compare);
+DECLARE_QOBJ_TYPE(iface)
 
 /* source of targeted hellos */
 struct tnbr {
-	LIST_ENTRY(tnbr)	 entry;
+	RB_ENTRY(tnbr)		 entry;
 	struct thread		*hello_timer;
 	struct adj		*adj;
 	int			 af;
@@ -283,7 +292,11 @@ struct tnbr {
 	int			 state;
 	uint16_t		 pw_count;
 	uint8_t			 flags;
+	QOBJ_FIELDS
 };
+RB_HEAD(tnbr_head, tnbr);
+RB_PROTOTYPE(tnbr_head, tnbr, entry, tnbr_compare);
+DECLARE_QOBJ_TYPE(tnbr)
 #define F_TNBR_CONFIGURED	 0x01
 #define F_TNBR_DYNAMIC		 0x02
 
@@ -294,7 +307,7 @@ enum auth_method {
 
 /* neighbor specific parameters */
 struct nbr_params {
-	LIST_ENTRY(nbr_params)	 entry;
+	RB_ENTRY(nbr_params)	 entry;
 	struct in_addr		 lsr_id;
 	uint16_t		 keepalive;
 	int			 gtsm_enabled;
@@ -305,21 +318,29 @@ struct nbr_params {
 		uint8_t			 md5key_len;
 	} auth;
 	uint8_t			 flags;
+	QOBJ_FIELDS
 };
+RB_HEAD(nbrp_head, nbr_params);
+RB_PROTOTYPE(nbrp_head, nbr_params, entry, nbr_params_compare);
+DECLARE_QOBJ_TYPE(nbr_params)
 #define F_NBRP_KEEPALIVE	 0x01
 #define F_NBRP_GTSM		 0x02
 #define F_NBRP_GTSM_HOPS	 0x04
 
 struct l2vpn_if {
-	LIST_ENTRY(l2vpn_if)	 entry;
+	RB_ENTRY(l2vpn_if)	 entry;
 	struct l2vpn		*l2vpn;
 	char			 ifname[IF_NAMESIZE];
 	unsigned int		 ifindex;
 	uint16_t		 flags;
+	QOBJ_FIELDS
 };
+RB_HEAD(l2vpn_if_head, l2vpn_if);
+RB_PROTOTYPE(l2vpn_if_head, l2vpn_if, entry, l2vpn_if_compare);
+DECLARE_QOBJ_TYPE(l2vpn_if)
 
 struct l2vpn_pw {
-	LIST_ENTRY(l2vpn_pw)	 entry;
+	RB_ENTRY(l2vpn_pw)	 entry;
 	struct l2vpn		*l2vpn;
 	struct in_addr		 lsr_id;
 	int			 af;
@@ -331,7 +352,11 @@ struct l2vpn_pw {
 	uint16_t		 remote_mtu;
 	uint32_t		 remote_status;
 	uint8_t			 flags;
+	QOBJ_FIELDS
 };
+RB_HEAD(l2vpn_pw_head, l2vpn_pw);
+RB_PROTOTYPE(l2vpn_pw_head, l2vpn_pw, entry, l2vpn_pw_compare);
+DECLARE_QOBJ_TYPE(l2vpn_pw)
 #define F_PW_STATUSTLV_CONF	0x01	/* status tlv configured */
 #define F_PW_STATUSTLV		0x02	/* status tlv negotiated */
 #define F_PW_CWORD_CONF		0x04	/* control word configured */
@@ -340,17 +365,21 @@ struct l2vpn_pw {
 #define F_PW_STATIC_NBR_ADDR	0x20	/* static neighbor address configured */
 
 struct l2vpn {
-	LIST_ENTRY(l2vpn)	 entry;
+	RB_ENTRY(l2vpn)		 entry;
 	char			 name[L2VPN_NAME_LEN];
 	int			 type;
 	int			 pw_type;
 	int			 mtu;
 	char			 br_ifname[IF_NAMESIZE];
 	unsigned int		 br_ifindex;
-	LIST_HEAD(, l2vpn_if)	 if_list;
-	LIST_HEAD(, l2vpn_pw)	 pw_list;
-	LIST_HEAD(, l2vpn_pw)	 pw_inactive_list;
+	struct l2vpn_if_head	 if_tree;
+	struct l2vpn_pw_head	 pw_tree;
+	struct l2vpn_pw_head	 pw_inactive_tree;
+	QOBJ_FIELDS
 };
+RB_HEAD(l2vpn_head, l2vpn);
+RB_PROTOTYPE(l2vpn_head, l2vpn, entry, l2vpn_compare);
+DECLARE_QOBJ_TYPE(l2vpn)
 #define L2VPN_TYPE_VPWS		1
 #define L2VPN_TYPE_VPLS		2
 
@@ -390,17 +419,19 @@ struct ldpd_conf {
 	struct in_addr		 rtr_id;
 	struct ldpd_af_conf	 ipv4;
 	struct ldpd_af_conf	 ipv6;
-	LIST_HEAD(, iface)	 iface_list;
-	LIST_HEAD(, tnbr)	 tnbr_list;
-	LIST_HEAD(, nbr_params)	 nbrp_list;
-	LIST_HEAD(, l2vpn)	 l2vpn_list;
+	struct iface_head	 iface_tree;
+	struct tnbr_head	 tnbr_tree;
+	struct nbrp_head	 nbrp_tree;
+	struct l2vpn_head	 l2vpn_tree;
 	uint16_t		 lhello_holdtime;
 	uint16_t		 lhello_interval;
 	uint16_t		 thello_holdtime;
 	uint16_t		 thello_interval;
 	uint16_t		 trans_pref;
 	int			 flags;
+	QOBJ_FIELDS
 };
+DECLARE_QOBJ_TYPE(ldpd_conf)
 #define	F_LDPD_NO_FIB_UPDATE	0x0001
 #define	F_LDPD_DS_CISCO_INTEROP	0x0002
 #define	F_LDPD_ENABLED		0x0004
@@ -422,7 +453,7 @@ struct ldpd_global {
 	uint32_t		 conf_seqnum;
 	int			 pfkeysock;
 	struct if_addr_head	 addr_list;
-	LIST_HEAD(, adj)	 adj_list;
+	struct global_adj_head	 adj_tree;
 	struct in_addr		 mcast_addr_v4;
 	struct in6_addr		 mcast_addr_v6;
 	TAILQ_HEAD(, pending_conn) pending_conns;
@@ -601,11 +632,38 @@ struct ldpd_af_global	*ldp_af_global_get(struct ldpd_global *, int);
 int			 ldp_is_dual_stack(struct ldpd_conf *);
 in_addr_t		 ldp_rtr_id_get(struct ldpd_conf *);
 int			 ldp_reload(struct ldpd_conf *);
+int			 ldp_reload_ref(struct ldpd_conf *, void **);
+struct ldpd_conf	*ldp_dup_config_ref(struct ldpd_conf *, void **ref);
 struct ldpd_conf	*ldp_dup_config(struct ldpd_conf *);
 void			 ldp_clear_config(struct ldpd_conf *);
 void			 merge_config(struct ldpd_conf *, struct ldpd_conf *);
 struct ldpd_conf	*config_new_empty(void);
 void			 config_clear(struct ldpd_conf *);
+
+/* ldp_vty_conf.c */
+/* NOTE: the parameters' names should be preserved because of codegen */
+struct iface		*iface_new_api(struct ldpd_conf *conf,
+			    const char *name);
+void			 iface_del_api(struct ldpd_conf *conf,
+			    struct iface *iface);
+struct tnbr		*tnbr_new_api(struct ldpd_conf *conf, int af,
+			    union ldpd_addr *addr);
+void			 tnbr_del_api(struct ldpd_conf *conf, struct tnbr *tnbr);
+struct nbr_params	*nbrp_new_api(struct ldpd_conf *conf,
+			    struct in_addr lsr_id);
+void			 nbrp_del_api(struct ldpd_conf *conf,
+			    struct nbr_params *nbrp);
+struct l2vpn		*l2vpn_new_api(struct ldpd_conf *conf, const char *name);
+void			 l2vpn_del_api(struct ldpd_conf *conf,
+			    struct l2vpn *l2vpn);
+struct l2vpn_if		*l2vpn_if_new_api(struct ldpd_conf *conf,
+			    struct l2vpn *l2vpn, const char *ifname);
+void			 l2vpn_if_del_api(struct l2vpn *l2vpn,
+			   struct l2vpn_if *lif);
+struct l2vpn_pw		*l2vpn_pw_new_api(struct ldpd_conf *conf,
+			    struct l2vpn *l2vpn, const char *ifname);
+void			 l2vpn_pw_del_api(struct l2vpn *l2vpn,
+			    struct l2vpn_pw *pw);
 
 /* socket.c */
 int		 ldp_create_socket(int, enum socket_type);
