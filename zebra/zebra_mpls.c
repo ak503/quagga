@@ -45,14 +45,14 @@
 #include "zebra/debug.h"
 //#include "zebra/zebra_memory.h"
 //#include "zebra/zebra_vrf.h"
-#include "zebra/rib.h"
 #include "zebra/zebra_mpls.h"
+#include "zebra/rib.h"
 
 //DEFINE_MTYPE_STATIC(ZEBRA, LSP,			"MPLS LSP object")
 //DEFINE_MTYPE_STATIC(ZEBRA, SLSP,		"MPLS static LSP config")
+//DEFINE_MTYPE_STATIC(ZEBRA, NHLFE,		"MPLS nexthop object")
 //DEFINE_MTYPE_STATIC(ZEBRA, SNHLFE,		"MPLS static nexthop object")
 //DEFINE_MTYPE_STATIC(ZEBRA, SNHLFE_IFNAME,	"MPLS static nexthop ifname")
-//DEFINE_MTYPE_STATIC(ZEBRA, NHLFE,		"MPLS nexthop object")
 
 int mpls_enabled;
 
@@ -171,6 +171,7 @@ nhlfe_nexthop_active_ipv4 (zebra_nhlfe_t *nhlfe, struct nexthop *nexthop)
   struct prefix_ipv4 p;
   struct route_node *rn;
   struct rib *match;
+  struct nexthop *match_nh;
 
   table = zebra_vrf_table (AFI_IP, SAFI_UNICAST, VRF_DEFAULT);
   if (!table)
@@ -191,17 +192,22 @@ nhlfe_nexthop_active_ipv4 (zebra_nhlfe_t *nhlfe, struct nexthop *nexthop)
   /* Locate a valid connected route. */
   RNODE_FOREACH_RIB (rn, match)
     {
-      if ((match->type == ZEBRA_ROUTE_CONNECT) &&
-          !CHECK_FLAG (match->status, RIB_ENTRY_REMOVED) &&
-          CHECK_FLAG (match->flags, ZEBRA_FLAG_SELECTED))
-        break;
+      if (CHECK_FLAG (match->status, RIB_ENTRY_REMOVED) ||
+	  !CHECK_FLAG (match->flags, ZEBRA_FLAG_SELECTED))
+	continue;
+
+      for (match_nh = match->nexthop; match_nh; match_nh = match_nh->next)
+	{
+	  if (match->type == ZEBRA_ROUTE_CONNECT ||
+	      nexthop->ifindex == match_nh->ifindex)
+	    {
+	      nexthop->ifindex = match_nh->ifindex;
+	      return 1;
+	    }
+	}
     }
 
-  if (!match || !match->nexthop)
-    return 0;
-
-  nexthop->ifindex = match->nexthop->ifindex;
-  return 1;
+  return 0;
 }
 
 
@@ -270,6 +276,7 @@ nhlfe_nexthop_active (zebra_nhlfe_t *nhlfe)
   switch (nexthop->type)
     {
       case NEXTHOP_TYPE_IPV4:
+      case NEXTHOP_TYPE_IPV4_IFINDEX:
         if (nhlfe_nexthop_active_ipv4 (nhlfe, nexthop))
           SET_FLAG (nexthop->flags, NEXTHOP_FLAG_ACTIVE);
         else
@@ -579,6 +586,7 @@ nhlfe2str (zebra_nhlfe_t *nhlfe, char *buf, int size)
   switch (nexthop->type)
     {
       case NEXTHOP_TYPE_IPV4:
+      case NEXTHOP_TYPE_IPV4_IFINDEX:
         inet_ntop (AF_INET, &nexthop->gate.ipv4, buf, size);
         break;
       case NEXTHOP_TYPE_IPV6:
@@ -611,8 +619,11 @@ nhlfe_nhop_match (zebra_nhlfe_t *nhlfe, enum nexthop_types_t gtype,
   switch (nhop->type)
     {
     case NEXTHOP_TYPE_IPV4:
+    case NEXTHOP_TYPE_IPV4_IFINDEX:
       cmp = memcmp(&(nhop->gate.ipv4), &(gate->ipv4),
                    sizeof(struct in_addr));
+      if (!cmp && nhop->type == NEXTHOP_TYPE_IPV4_IFINDEX)
+        cmp = !(nhop->ifindex == ifindex);
       break;
     case NEXTHOP_TYPE_IPV6:
     case NEXTHOP_TYPE_IPV6_IFINDEX:
@@ -688,7 +699,10 @@ nhlfe_add (zebra_lsp_t *lsp, enum lsp_types_t lsp_type,
   switch (nexthop->type)
     {
     case NEXTHOP_TYPE_IPV4:
+    case NEXTHOP_TYPE_IPV4_IFINDEX:
       nexthop->gate.ipv4 = gate->ipv4;
+      if (ifindex)
+        nexthop->ifindex = ifindex;
       break;
     case NEXTHOP_TYPE_IPV6:
     case NEXTHOP_TYPE_IPV6_IFINDEX:
@@ -847,6 +861,7 @@ nhlfe_json (zebra_nhlfe_t *nhlfe)
   switch (nexthop->type)
     {
     case NEXTHOP_TYPE_IPV4:
+    case NEXTHOP_TYPE_IPV4_IFINDEX:
       json_object_string_add(json_nhlfe, "nexthop",
                              inet_ntoa (nexthop->gate.ipv4));
       break;
@@ -884,7 +899,10 @@ nhlfe_print (zebra_nhlfe_t *nhlfe, struct vty *vty)
   switch (nexthop->type)
     {
     case NEXTHOP_TYPE_IPV4:
+    case NEXTHOP_TYPE_IPV4_IFINDEX:
       vty_out (vty, "  via %s", inet_ntoa (nexthop->gate.ipv4));
+      if (nexthop->ifindex)
+        vty_out (vty, " dev %s", ifindex2ifname (nexthop->ifindex));
       break;
     case NEXTHOP_TYPE_IPV6:
     case NEXTHOP_TYPE_IPV6_IFINDEX:
@@ -1263,7 +1281,8 @@ mpls_label2str (u_int8_t num_labels, mpls_label_t *labels,
  */
 int
 mpls_ftn_update (int add, struct zebra_vrf *zvrf, enum lsp_types_t type,
-		 struct prefix *prefix, union g_addr *gate, u_int8_t distance,
+		 struct prefix *prefix, enum nexthop_types_t gtype,
+		 union g_addr *gate, ifindex_t ifindex, u_int8_t distance,
 		 mpls_label_t out_label)
 {
   struct route_table *table;
@@ -1290,35 +1309,39 @@ mpls_ftn_update (int add, struct zebra_vrf *zvrf, enum lsp_types_t type,
     return -1;
 
   for (nexthop = rib->nexthop; nexthop; nexthop = nexthop->next)
-    switch (prefix->family)
-      {
-	case AF_INET:
-	  if (nexthop->type != NEXTHOP_TYPE_IPV4 &&
-	      nexthop->type != NEXTHOP_TYPE_IPV4_IFINDEX)
-	    continue;
+    {
+      if (nexthop->type != gtype)
+	continue;
+      switch (gtype)
+	{
+	case NEXTHOP_TYPE_IPV4:
+	case NEXTHOP_TYPE_IPV4_IFINDEX:
 	  if (! IPV4_ADDR_SAME (&nexthop->gate.ipv4, &gate->ipv4))
 	    continue;
-	  goto found;
-	  break;
-	case AF_INET6:
-	  if (nexthop->type != NEXTHOP_TYPE_IPV6 &&
-	      nexthop->type != NEXTHOP_TYPE_IPV6_IFINDEX)
+	  if (gtype == NEXTHOP_TYPE_IPV4_IFINDEX && nexthop->ifindex != ifindex)
 	    continue;
+	  goto found;
+	case NEXTHOP_TYPE_IPV6:
+	case NEXTHOP_TYPE_IPV6_IFINDEX:
 	  if (! IPV6_ADDR_SAME (&nexthop->gate.ipv6, &gate->ipv6))
 	    continue;
+	  if (gtype == NEXTHOP_TYPE_IPV6_IFINDEX && nexthop->ifindex != ifindex)
+	    continue;
 	  goto found;
-	  break;
 	default:
 	  break;
-      }
+	}
+    }
   /* nexthop not found */
   return -1;
 
  found:
-  if (add)
+  if (add && nexthop->nh_label_type == ZEBRA_LSP_NONE)
     nexthop_add_labels (nexthop, type, 1, &out_label);
-  else
+  else if (!add && nexthop->nh_label_type == type)
     nexthop_del_labels (nexthop);
+  else
+    return 0;
 
   SET_FLAG (rib->status, RIB_ENTRY_CHANGED);
   SET_FLAG (rib->status, RIB_ENTRY_NEXTHOPS_CHANGED);
@@ -1582,7 +1605,6 @@ zebra_mpls_lsp_label_consistent (struct zebra_vrf *zvrf, mpls_label_t in_label,
   return 1;
 }
 
-
 /*
  * Add static LSP entry. This may be the first entry for this incoming label
  * or an additional nexthop; an existing entry may also have outgoing label
@@ -1764,7 +1786,7 @@ zebra_mpls_print_lsp (struct vty *vty, struct zebra_vrf *zvrf, mpls_label_t labe
   if (use_json)
     {
       json = lsp_json(lsp);
-      vty_out (vty, "%s%s", json_object_to_json_string(json), VTY_NEWLINE);
+      vty_out (vty, "%s%s", json_object_to_json_string_ext(json, JSON_C_TO_STRING_PRETTY), VTY_NEWLINE);
       json_object_free(json);
     }
   else
@@ -1794,7 +1816,7 @@ zebra_mpls_print_lsp_table (struct vty *vty, struct zebra_vrf *zvrf,
         json_object_object_add(json, label2str(lsp->ile.in_label, buf, BUFSIZ),
                                lsp_json(lsp));
 
-      vty_out (vty, "%s%s", json_object_to_json_string(json), VTY_NEWLINE);
+      vty_out (vty, "%s%s", json_object_to_json_string_ext(json, JSON_C_TO_STRING_PRETTY), VTY_NEWLINE);
       json_object_free(json);
     }
   else
@@ -1813,6 +1835,7 @@ zebra_mpls_print_lsp_table (struct vty *vty, struct zebra_vrf *zvrf,
               switch (nexthop->type)
                 {
                 case NEXTHOP_TYPE_IPV4:
+                case NEXTHOP_TYPE_IPV4_IFINDEX:
                   vty_out (vty, "%15s", inet_ntoa (nexthop->gate.ipv4));
                   break;
                 case NEXTHOP_TYPE_IPV6:

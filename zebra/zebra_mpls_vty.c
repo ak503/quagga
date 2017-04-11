@@ -835,7 +835,6 @@ void
 zebra_mpls_vty_init (void)
 {
   install_element (VIEW_NODE, &show_mpls_status_cmd);
-  install_element (ENABLE_NODE, &show_mpls_status_cmd);
 
   install_node (&mpls_node, zebra_mpls_config);
 
@@ -879,7 +878,5 @@ zebra_mpls_vty_init (void)
   install_element (CONFIG_NODE, &no_mpls_transit_lsp_all_cmd);
 
   install_element (VIEW_NODE, &show_mpls_table_cmd);
-  install_element (ENABLE_NODE, &show_mpls_table_cmd);
   install_element (VIEW_NODE, &show_mpls_table_lsp_cmd);
-  install_element (ENABLE_NODE, &show_mpls_table_lsp_cmd);
 }
