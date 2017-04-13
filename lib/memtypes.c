@@ -80,8 +80,9 @@ struct memory_list memory_list_lib[] =
 struct memory_list memory_list_zebra[] = 
 {
   { MTYPE_RTADV_PREFIX,		"Router Advertisement Prefix"	},
-  { MTYPE_ZEBRA_VRF,		"ZEBRA VRF"				},
+  { MTYPE_ZEBRA_VRF,		"ZEBRA VRF"			},
   { MTYPE_NEXTHOP,		"Nexthop"			},
+  { MTYPE_NH_LABEL,		"Nexthop label"			},
   { MTYPE_RIB,			"RIB"				},
   { MTYPE_RIB_QUEUE,		"RIB process work queue"	},
   { MTYPE_STATIC_ROUTE,		"Static route"			},
@@ -92,6 +93,7 @@ struct memory_list memory_list_zebra[] =
   { MTYPE_RNH,		        "Nexthop tracking object"	},
   { MTYPE_LSP,			"MPLS LSP object"		},
   { MTYPE_SLSP,			"MPLS static LSP config"	},
+  { MTYPE_NHLFE,		"MPLS nexthop object"		},
   { MTYPE_SNHLFE,		"MPLS static nexthop object"	},
   { MTYPE_SNHLFE_IFNAME,	"MPLS static nexthop ifname"	},
   { -1, NULL },

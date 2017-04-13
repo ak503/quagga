@@ -36,6 +36,7 @@
 #include "routemap.h"
 #include "vrf.h"
 #include "nexthop.h"
+#include "mpls.h"
 
 #include "zebra/rib.h"
 #include "zebra/rt.h"
@@ -107,6 +108,19 @@ _rnode_zlog(const char *_func, struct route_node *rn, int priority,
     }
 
   zlog (NULL, priority, "%s: %s: %s", _func, buf, msgbuf);
+}
+
+u_char
+route_distance (int type)
+{
+  u_char distance;
+
+  if ((unsigned)type >= array_size(route_info))
+    distance = 150;
+  else
+    distance = route_info[type].distance;
+
+  return distance;
 }
 
 #define rnode_debug(node, ...) \
@@ -3131,6 +3145,7 @@ rib_close (void)
         rib_close_table (zvrf->table[AFI_IP][SAFI_UNICAST]);
         rib_close_table (zvrf->table[AFI_IP6][SAFI_UNICAST]);
       }
+  zebra_mpls_close_tables(zvrf);
 }
 
 /* Routing information base initialize. */
