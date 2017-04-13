@@ -73,6 +73,7 @@ struct memory_list memory_list_lib[] =
   { MTYPE_VRF_NAME,		"VRF name"			},
   { MTYPE_VRF_BITMAP,		"VRF bit-map"			},
   { MTYPE_IF_LINK_PARAMS,       "Informational Link Parameters" },
+
   { -1, NULL },
 };
 
@@ -89,6 +90,10 @@ struct memory_list memory_list_zebra[] =
   { MTYPE_NETLINK_NAME,	"Netlink name"			},
   { MTYPE_NETLINK_RCVBUF,	"Netlink receive buffer"	},
   { MTYPE_RNH,		        "Nexthop tracking object"	},
+  { MTYPE_LSP,			"MPLS LSP object"		},
+  { MTYPE_SLSP,			"MPLS static LSP config"	},
+  { MTYPE_SNHLFE,		"MPLS static nexthop object"	},
+  { MTYPE_SNHLFE_IFNAME,	"MPLS static nexthop ifname"	},
   { -1, NULL },
 };
 

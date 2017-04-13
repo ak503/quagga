@@ -312,7 +312,7 @@ vtysh_config_parse (char *line)
    || (I) == AS_LIST_NODE || (I) == COMMUNITY_LIST_NODE || \
    (I) == ACCESS_IPV6_NODE || (I) == PREFIX_IPV6_NODE \
    || (I) == SERVICE_NODE || (I) == FORWARDING_NODE || (I) == DEBUG_NODE \
-   || (I) == AAA_NODE || (I) == MPLS_NODE))
+   || (I) == AAA_NODE || (I) == MPLS_NODE)
 
 /* Display configuration to file pointer. */
 void

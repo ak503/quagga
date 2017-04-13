@@ -42,14 +42,7 @@
 #include "zebra/zserv.h"
 #include "zebra/redistribute.h"
 #include "zebra/debug.h"
-#include "zebra/zebra_memory.h"
-#include "zebra/zebra_vrf.h"
 #include "zebra/zebra_mpls.h"
-
-DEFINE_MTYPE_STATIC(ZEBRA, LSP,			"MPLS LSP object")
-DEFINE_MTYPE_STATIC(ZEBRA, SLSP,		"MPLS static LSP config")
-DEFINE_MTYPE_STATIC(ZEBRA, SNHLFE,		"MPLS static nexthop object")
-DEFINE_MTYPE_STATIC(ZEBRA, SNHLFE_IFNAME,	"MPLS static nexthop ifname")
 
 /* Default rtm_table for all clients */
 extern struct zebra_t zebrad;
