@@ -356,6 +356,15 @@ AC_ARG_ENABLE(werror,
 AC_ARG_ENABLE([protobuf],
   AS_HELP_STRING([--enable-protobuf], [Enable experimental protobuf support]))
 
+AC_CHECK_HEADERS(json-c/json.h)
+AC_CHECK_LIB(json-c, json_object_get, LIBS="$LIBS -ljson-c")
+if test $ac_cv_lib_json_c_json_object_get = no; then
+  AC_CHECK_LIB(json, json_object_get, LIBS="$LIBS -ljson")
+  if test $ac_cv_lib_json_json_object_get = no; then
+      AC_MSG_ERROR([lib json is needed to compile])
+  fi
+fi
+
 AC_ARG_ENABLE([dev_build],
     AS_HELP_STRING([--enable-dev-build], [build for development]))
 
