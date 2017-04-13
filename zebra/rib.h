@@ -335,6 +335,10 @@ struct zebra_vrf
 
   /* MPLS label forwarding table */
   struct hash *lsp_table;
+
+  /* MPLS processing flags */
+  u_int16_t mpls_flags;
+#define MPLS_FLAG_SCHEDULE_LSPS    (1 << 0)
 };
 
 /*
