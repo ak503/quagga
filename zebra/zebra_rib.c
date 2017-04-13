@@ -2347,7 +2347,7 @@ static_uninstall_route (afi_t afi, safi_t safi, struct prefix *p, struct static_
 int
 static_add_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
 		      const char *ifname, u_char flags, route_tag_t tag,
-		      u_char distance, vrf_id_t vrf_id)
+		      u_char distance, vrf_id_t vrf_id, struct static_nh_label *snh_label)
 {
   u_char type = 0;
   struct route_node *rn;
@@ -2379,8 +2379,8 @@ static_add_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
 	  && (! gate || IPV4_ADDR_SAME (gate, &si->addr.ipv4))
 	  && (! ifname || strcmp (ifname, si->ifname) == 0))
 	{
-	  if (distance == si->distance &&
-	      tag == si->tag)
+	  if ((distance == si->distance) && (tag == si->tag) &&
+	      !memcmp (&si->snh_label, snh_label, sizeof (struct static_nh_label)))
 	    {
 	      route_unlock_node (rn);
 	      return 0;
@@ -2390,9 +2390,9 @@ static_add_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
 	}
     }
 
-  /* Distance or tag changed. */
+  /* Distance or tag or label changed, delete existing first. */
   if (update)
-    static_delete_ipv4_safi (safi, p, gate, ifname, update->tag, update->distance, vrf_id);
+    static_delete_ipv4_safi (safi, p, gate, ifname, update->tag, update->distance, vrf_id, &update->snh_label);
 
   /* Make new static route structure. */
   si = XCALLOC (MTYPE_STATIC_ROUTE, sizeof (struct static_route));
@@ -2407,6 +2407,9 @@ static_add_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
     si->addr.ipv4 = *gate;
   if (ifname)
     si->ifname = XSTRDUP (MTYPE_TMP, ifname);
+
+  /* Save labels, if any. */
+  memcpy (&si->snh_label, snh_label, sizeof (struct static_nh_label));
 
   /* Add new static route information to the tree with sort by
      distance value and gateway address. */
@@ -2444,7 +2447,7 @@ static_add_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
 int
 static_delete_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
 			 const char *ifname, route_tag_t tag, u_char distance,
-			 vrf_id_t vrf_id)
+			 vrf_id_t vrf_id, struct static_nh_label *snh_label)
 {
   u_char type = 0;
   struct route_node *rn;
@@ -2474,7 +2477,9 @@ static_delete_ipv4_safi (safi_t safi, struct prefix *p, struct in_addr *gate,
     if (type == si->type
 	&& (! gate || IPV4_ADDR_SAME (gate, &si->addr.ipv4))
 	&& (! ifname || strcmp (ifname, si->ifname) == 0)
-	&& (! tag || (tag == si->tag)))
+	&& (! tag || (tag == si->tag))
+	&& (! snh_label->num_labels ||
+	    !memcmp (&si->snh_label, snh_label, sizeof (struct static_nh_label))))
       break;
 
   /* Can't find static route. */
@@ -2831,7 +2836,7 @@ rib_delete_ipv6 (int type, int flags, struct prefix_ipv6 *p,
 int
 static_add_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
 		 const char *ifname, u_char flags, route_tag_t tag,
-		 u_char distance, vrf_id_t vrf_id)
+		 u_char distance, vrf_id_t vrf_id, struct static_nh_label *snh_label)
 {
   struct route_node *rn;
   struct static_route *si;
@@ -2863,8 +2868,8 @@ static_add_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
 	  && (! gate || IPV6_ADDR_SAME (gate, &si->addr.ipv6))
 	  && (! ifname || strcmp (ifname, si->ifname) == 0))
 	{
-	  if (distance == si->distance)
-	    {
+	  if ((distance == si->distance) && (tag == si->tag) &&
+	      !memcmp (&si->snh_label, snh_label, sizeof (struct static_nh_label)))	    {
 	      route_unlock_node (rn);
 	      return 0;
 	    }
@@ -2874,7 +2879,7 @@ static_add_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
     }
 
   if (update)
-    static_delete_ipv6(p, type, gate, ifname, tag, update->distance, vrf_id);
+    static_delete_ipv6(p, type, gate, ifname, tag, update->distance, vrf_id, &update->snh_label);
 
   /* Make new static route structure. */
   si = XCALLOC (MTYPE_STATIC_ROUTE, sizeof (struct static_route));
@@ -2898,6 +2903,9 @@ static_add_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
       si->ifname = XSTRDUP (MTYPE_TMP, ifname);
       break;
     }
+
+  /* Save labels, if any. */
+  memcpy (&si->snh_label, snh_label, sizeof (struct static_nh_label));
 
   /* Add new static route information to the tree with sort by
      distance value and gateway address. */
@@ -2929,7 +2937,7 @@ static_add_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
 int
 static_delete_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
 		    const char *ifname, route_tag_t tag, u_char distance,
-		    vrf_id_t vrf_id)
+		    vrf_id_t vrf_id, struct static_nh_label *snh_label)
 {
   struct route_node *rn;
   struct static_route *si;
@@ -2951,7 +2959,9 @@ static_delete_ipv6 (struct prefix *p, u_char type, struct in6_addr *gate,
 	&& type == si->type
 	&& (! gate || IPV6_ADDR_SAME (gate, &si->addr.ipv6))
 	&& (! ifname || strcmp (ifname, si->ifname) == 0)
-	&& (! tag || (tag == si->tag)))
+	&& (! tag || (tag == si->tag))
+	&& (! snh_label->num_labels ||
+	    !memcmp (&si->snh_label, snh_label, sizeof (struct static_nh_label))))
       break;
 
   /* Can't find static route. */
