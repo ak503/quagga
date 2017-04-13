@@ -44,6 +44,7 @@
 #include "zebra/debug.h"
 #include "zebra/zebra_fpm.h"
 #include "zebra/zebra_rnh.h"
+#include "zebra/zebra_mpls.h"
 
 /* Default rtm_table for all clients */
 extern struct zebra_t zebrad;
@@ -3311,6 +3312,8 @@ zebra_vrf_alloc (vrf_id_t vrf_id)
   zvrf->netlink_cmd.sock = -1;
   zvrf->netlink_cmd.name = XSTRDUP (MTYPE_NETLINK_NAME, nl_name);
 #endif
+
+  zebra_mpls_init_tables (zvrf);
 
   return zvrf;
 }
