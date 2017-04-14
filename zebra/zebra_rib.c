@@ -1488,7 +1488,7 @@ rib_meta_queue_add (struct meta_queue *mq, struct route_node *rn)
 }
 
 /* Add route_node to work queue and schedule processing */
-static void
+void
 rib_queue_add (struct zebra_t *zebra, struct route_node *rn)
 {
   assert (zebra && rn);
@@ -2211,7 +2211,7 @@ static_install_route (afi_t afi, safi_t safi, struct prefix *p, struct static_ro
       rib_queue_add (&zebrad, rn);
       /* Update label(s), if present. */
       if (si->snh_label.num_labels)
-	nexthop_add_labels (nexthop, ZEBRA_LSP_STATIC, si->snh_label.num_labels
+	nexthop_add_labels (nexthop, ZEBRA_LSP_STATIC, si->snh_label.num_labels,
 			    &si->snh_label.label[0]);
     }
   else

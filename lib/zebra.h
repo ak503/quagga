@@ -430,7 +430,7 @@ struct in_pktinfo
 #define ZEBRA_NEXTHOP_UNREGISTER          28
 #define ZEBRA_NEXTHOP_UPDATE              29
 #define ZEBRA_MPLS_LABELS_ADD		  30
-#define ZEBRA_MPLS_LABELS_DELET		  31
+#define ZEBRA_MPLS_LABELS_DELETE	  31
 #define ZEBRA_MESSAGE_MAX                 32
 
 /* Marker value used in new Zserv, in the byte location corresponding
