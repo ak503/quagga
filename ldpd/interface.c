@@ -490,7 +490,7 @@ if_join_ipv4_group(struct iface *iface, struct in_addr *addr)
 	if_addr.s_addr = if_get_ipv4_addr(iface);
 
 	if (setsockopt_ipv4_multicast(global.ipv4.ldp_disc_socket,
-	    IP_ADD_MEMBERSHIP, if_addr, addr->s_addr, iface->ifindex) < 0) {
+	    IP_ADD_MEMBERSHIP, addr->s_addr, iface->ifindex) < 0) {
 		log_warn("%s: error IP_ADD_MEMBERSHIP, interface %s address %s",
 		     __func__, iface->name, inet_ntoa(*addr));
 		return (-1);
@@ -509,7 +509,7 @@ if_leave_ipv4_group(struct iface *iface, struct in_addr *addr)
 	if_addr.s_addr = if_get_ipv4_addr(iface);
 
 	if (setsockopt_ipv4_multicast(global.ipv4.ldp_disc_socket,
-	    IP_DROP_MEMBERSHIP, if_addr, addr->s_addr, iface->ifindex) < 0) {
+	    IP_DROP_MEMBERSHIP, addr->s_addr, iface->ifindex) < 0) {
 		log_warn("%s: error IP_DROP_MEMBERSHIP, interface %s "
 		    "address %s", __func__, iface->name, inet_ntoa(*addr));
 		return (-1);

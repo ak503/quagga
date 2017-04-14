@@ -409,7 +409,7 @@ sock_set_ipv4_mcast(struct iface *iface)
 	if_addr.s_addr = if_get_ipv4_addr(iface);
 
 	if (setsockopt_ipv4_multicast_if(global.ipv4.ldp_disc_socket,
-	    if_addr, iface->ifindex) < 0) {
+	     iface->ifindex) < 0) {
 		log_warn("%s: error setting IP_MULTICAST_IF, interface %s",
 		    __func__, iface->name);
 		return (-1);

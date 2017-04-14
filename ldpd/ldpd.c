@@ -302,7 +302,7 @@ main(int argc, char *argv[])
 		exit(1);
 	}
 
-	zlog_default = openzlog(progname, ZLOG_LDP, 0,
+	zlog_default = openzlog(progname, ZLOG_LDP, 
 	    LOG_CONS | LOG_NDELAY | LOG_PID, LOG_DAEMON);
 
 	if (lflag)
